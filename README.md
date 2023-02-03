@@ -22,11 +22,11 @@ $ python generate.py -t <task> -l <level> -o <output_path> -n <number> -s <split
 ```
 
 Where:
-* <task> is a task group name (directories under tasks) or "all" for all tasks. Default: "all"
-* <level> is the curriculum level, such as: 0, 1, 2 or "all" for all curriculum levels. Default: "all"
-* <output_path> is the path where the generated data will be saved. Default: "."
-* <number> is the number of task samples to generate, for both training and evaluation). Default: 100
-* <split> is the percentage of tasks kept for training (the rest being test tasks). Default: 0.8 
+* task is a task group name (directories under tasks) or "all" for all tasks. Default: "all"
+* level is the curriculum level, such as: 0, 1, 2 or "all" for all curriculum levels. Default: "all"
+* output_path is the path where the generated data will be saved. Default: "."
+* number is the number of task samples to generate, for both training and evaluation). Default: 100
+* split is the percentage of tasks kept for training (the rest being test tasks). Default: 0.8 
 
 Output:
 * <output_path>/training/*.json will contain the generated data, one file per training task sample
