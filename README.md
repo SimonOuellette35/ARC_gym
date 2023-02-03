@@ -5,7 +5,7 @@
 
 ###### Introduction & Motivation
 
-This project is an extension of the ideas presented in my essay: [Building human-like intelligence: an evolutionary perspective](ARC_gym/essay.pdf).
+This project is an extension of the ideas presented in my essay: [Building human-like intelligence: an evolutionary perspective](essay.pdf).
 This essay was written for a [competition organized by Lab42](https://lab42.global/past-challenges/essay-intelligence/), in which it won 1st place.
 
 The underlying idea behind ARC gym is that the ARC challenge is only a challenge, a test set. It does not constitute a valid training set. Even though
