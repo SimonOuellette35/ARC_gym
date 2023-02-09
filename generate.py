@@ -24,9 +24,9 @@ parser.add_argument('-s', '--split', default=0.8)
 
 args = parser.parse_args()
 
-def generate(task_list, level, number):
+def generate(task_list, level, number, k=5):
 
-    def generateSample(k=3):
+    def generateSample(k):
 
         if level is None:
             level_idx = np.random.choice(np.arange(len(task_list.keys())))
@@ -40,16 +40,18 @@ def generate(task_list, level, number):
         query_inputs = []
         query_outputs = []
 
+        task_instance = task_list[level_idx][task_idx]()
+
         for _ in range(k):
-            input_grid = task_list[level_idx][task_idx].generateInput()
-            output_grid = task_list[level_idx][task_idx].generateOutput(input_grid)
+            input_grid = task_instance.generateInput()
+            output_grid = task_instance.generateOutput(input_grid)
 
             support_inputs.append(input_grid)
             support_outputs.append(output_grid)
 
         for _ in range(k):
-            input_grid = task_list[level_idx][task_idx].generateInput()
-            output_grid = task_list[level_idx][task_idx].generateOutput(input_grid)
+            input_grid = task_instance.generateInput()
+            output_grid = task_instance.generateOutput(input_grid)
 
             query_inputs.append(input_grid)
             query_outputs.append(output_grid)
@@ -58,7 +60,7 @@ def generate(task_list, level, number):
 
     task_samples = []
     for _ in range(number):
-        sample = generateSample()
+        sample = generateSample(k)
 
         task_samples.append(sample)
 
@@ -94,5 +96,14 @@ if args.task == 'all' or args.task == 'cardinality':
     training_samples = generate(training_task_dict, curriculum_level, int(args.number))
     file_utils.save(training_samples, "%s/training" % args.output)
 
-    test_samples = generate(test_task_dict, curriculum_level, int(args.number))
-    file_utils.save(test_samples, "%s/test" % args.output)
+    use_test_data = True
+    if args.level == 'all':
+        if len(list(test_task_dict[0])) == 0:
+            use_test_data = False
+    else:
+        if len(list(test_task_dict[int(curriculum_level)])) == 0:
+            use_test_data = False
+
+    if use_test_data:
+        test_samples = generate(test_task_dict, curriculum_level, int(args.number))
+        file_utils.save(test_samples, "%s/test" % args.output)
