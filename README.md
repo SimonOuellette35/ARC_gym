@@ -39,3 +39,5 @@ The "split" parameter determines how many tasks (not task samples) to pick for t
 task and task sample should be clear. A task is a problem to solve (MaxColorFillBasic is one task, while MinColorFillBasic
 is another task), while a task sample is a particular random instantiation of a task. The goal is to train and evaluate
 on different tasks, not just different task samples.
+
+Generated data files can then be opened and used with the app found on https://github.com/fchollet/ARC
