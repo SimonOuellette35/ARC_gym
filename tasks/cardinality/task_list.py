@@ -16,20 +16,18 @@ task_list = {
         tasks.MinColorFiltering,
         tasks.MinColorWins,
         tasks.MaxColorWins,
-
-        # TODO: test the following tasks
-        # tasks.GridDimEvenOddFiltering,
-        # tasks.EqualityTestMaxV1,
-        # tasks.EqualityTestMinV1,
-        # tasks.EqualityTestV2,
-        # tasks.SumMin,
-        # tasks.SumMax,
-        # tasks.DiffMin,
-        # tasks.DiffMax,
-        # tasks.SumMinV2,
-        # tasks.SumMaxV2,
-        # tasks.DiffMinV2,
-        # tasks.DiffMaxV2
+        tasks.GridDimEvenOddFiltering,
+        tasks.EqualityTestMaxV1,
+        tasks.EqualityTestMinV1,
+        tasks.EqualityTestV2,
+        tasks.SumMin,
+        tasks.SumMax,
+        tasks.DiffMin,
+        tasks.DiffMax,
+        tasks.SumMinV2,
+        tasks.SumMaxV2,
+        tasks.DiffMinV2,
+        tasks.DiffMaxV2
         ],
     1: [],
     2: []
