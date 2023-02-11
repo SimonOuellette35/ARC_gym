@@ -7,7 +7,7 @@ class MinColorFillBasic(Task):
     def __init__(self):
         super(MinColorFillBasic).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -20,7 +20,7 @@ class MinColorFillBasic(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         min_key = min(color_count, key=color_count.get)
@@ -32,7 +32,7 @@ class MaxColorFillBasic(Task):
     def __init__(self):
         super(MaxColorFillBasic).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -45,7 +45,7 @@ class MaxColorFillBasic(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         max_key = max(color_count, key=color_count.get)
@@ -57,7 +57,7 @@ class MinColorFillAdvanced(Task):
     def __init__(self):
         super(MinColorFillAdvanced).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -70,7 +70,7 @@ class MinColorFillAdvanced(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         min_key = min(color_count, key=color_count.get)
@@ -83,7 +83,7 @@ class MaxColorFillAdvanced(Task):
     def __init__(self):
         super(MaxColorFillAdvanced).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -96,7 +96,7 @@ class MaxColorFillAdvanced(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         max_key = max(color_count, key=color_count.get)
@@ -109,7 +109,7 @@ class MinColorFiltering(Task):
     def __init__(self):
         super(MinColorFiltering).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -122,7 +122,7 @@ class MinColorFiltering(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         min_key = min(color_count, key=color_count.get)
@@ -142,7 +142,7 @@ class MaxColorFiltering(Task):
     def __init__(self):
         super(MaxColorFiltering).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -155,7 +155,7 @@ class MaxColorFiltering(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         max_key = max(color_count, key=color_count.get)
@@ -174,10 +174,10 @@ class EvenColorFiltering(Task):
     def __init__(self):
         super(EvenColorFiltering).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         return grid_utils.generateRandomPixels()
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         even_colors = []
         for key, value in color_count.items():
@@ -198,10 +198,10 @@ class OddColorFiltering(Task):
     def __init__(self):
         super(OddColorFiltering).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         return grid_utils.generateRandomPixels()
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         odd_colors = []
         for key, value in color_count.items():
@@ -223,10 +223,10 @@ class GreaterThanColorFiltering(Task):
         super(GreaterThanColorFiltering).__init__()
         self.K = np.random.choice(np.arange(2, 10))
 
-    def generateInput(self):
+    def _generateInput(self):
         return grid_utils.generateRandomPixels()
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         kept_colors = []
         for key, value in color_count.items():
@@ -248,10 +248,10 @@ class LessThanColorFiltering(Task):
         super(LessThanColorFiltering).__init__()
         self.K = np.random.choice(np.arange(2, 10))
 
-    def generateInput(self):
+    def _generateInput(self):
         return grid_utils.generateRandomPixels()
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         kept_colors = []
         for key, value in color_count.items():
@@ -272,10 +272,10 @@ class ColumnPixelCounting(Task):
     def __init__(self):
         super(ColumnPixelCounting).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         return grid_utils.generateRandomPixels(max_pixels=15)
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         output_grid = grid_utils.generateEmptyGrid(0, 15)
@@ -293,10 +293,10 @@ class RowPixelCounting(Task):
     def __init__(self):
         super(RowPixelCounting).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         return grid_utils.generateRandomPixels(max_pixels=15)
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         output_grid = grid_utils.generateEmptyGrid(0, 15)
 
@@ -313,7 +313,7 @@ class MaxColorWins(Task):
     def __init__(self):
         super(MaxColorWins).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -326,7 +326,7 @@ class MaxColorWins(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         max_key = max(color_count, key=color_count.get)
@@ -345,7 +345,7 @@ class MinColorWins(Task):
     def __init__(self):
         super(MinColorWins).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the min color is unique
         solution_unique = False
         while not solution_unique:
@@ -358,7 +358,7 @@ class MinColorWins(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
 
         min_key = min(color_count, key=color_count.get)
@@ -377,10 +377,10 @@ class GridDimEvenOddFiltering(Task):
     def __init__(self):
         super(GridDimEvenOddFiltering).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         return grid_utils.generateRandomPixels()
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         grid_dim = input_grid.shape[0]
         color_count = grid_utils.colorCount(input_grid)
 
@@ -410,14 +410,14 @@ class EqualityTestMaxV1(Task):
     def __init__(self):
         super(EqualityTestMaxV1).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # TODO: must make sure that in half of the query examples, you have color_vals[0] != color_vals[1], and in the
         #  other half, you have the other case!
         #  This means the outer loop must not control the generation of batches of query examples, it must be managed
         #  within this task so that it can control the distribution!
         return grid_utils.generateRandomPixels(num_groups=2)
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         color_vals = list(color_count.values())
 
@@ -445,14 +445,14 @@ class EqualityTestMinV1(Task):
     def __init__(self):
         super(EqualityTestMinV1).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # TODO: must make sure that in half of the query examples, you have color_vals[0] != color_vals[1], and in the
         #  other half, you have the other case!
         #  This means the outer loop must not control the generation of batches of query examples, it must be managed
         #  within this task so that it can control the distribution!
         return grid_utils.generateRandomPixels(num_groups=2)
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         color_vals = list(color_count.values())
 
@@ -481,14 +481,14 @@ class EqualityTestV2(Task):
         self.equal_color = np.random.choice(np.arange(1, 10))
         self.unequal_color = np.random.choice(np.concatenate((np.arange(1, self.equal_color), np.arange(self.equal_color + 1, 10))))
 
-    def generateInput(self):
+    def _generateInput(self):
         # TODO: must make sure that in half of the query examples, you have color_vals[0] != color_vals[1], and in the
         #  other half, you have the other case!
         #  This means the outer loop must not control the generation of batches of query examples, it must be managed
         #  within this task so that it can control the distribution!
         return grid_utils.generateRandomPixels(num_groups=2)
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         color_vals = list(color_count.values())
         total_count = np.sum(color_vals)
@@ -503,7 +503,7 @@ class SumMin(Task):
     def __init__(self):
         super(SumMin).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the min color is unique
         solution_unique = False
         while not solution_unique:
@@ -516,7 +516,7 @@ class SumMin(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         total_count = np.sum(list(color_count.values()))
         min_key = min(color_count, key=color_count.get)
@@ -528,7 +528,7 @@ class SumMax(Task):
     def __init__(self):
         super(SumMax).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -541,7 +541,7 @@ class SumMax(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         total_count = np.sum(list(color_count.values()))
         max_key = max(color_count, key=color_count.get)
@@ -553,7 +553,7 @@ class DiffMin(Task):
     def __init__(self):
         super(DiffMin).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the min color is unique
         solution_unique = False
         while not solution_unique:
@@ -566,7 +566,7 @@ class DiffMin(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         color_vals = list(color_count.values())
         difference = abs(color_vals[0] - color_vals[1])
@@ -579,7 +579,7 @@ class DiffMax(Task):
     def __init__(self):
         super(DiffMax).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the max color is unique
         solution_unique = False
         while not solution_unique:
@@ -592,7 +592,7 @@ class DiffMax(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         color_vals = list(color_count.values())
         difference = abs(color_vals[0] - color_vals[1])
@@ -605,7 +605,7 @@ class SumMinV2(Task):
     def __init__(self):
         super(SumMinV2).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the min AND max colors are unique
         solution_unique = False
         while not solution_unique:
@@ -619,7 +619,7 @@ class SumMinV2(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         min_key = min(color_count, key=color_count.get)
         max_key = max(color_count, key=color_count.get)
@@ -634,7 +634,7 @@ class SumMaxV2(Task):
     def __init__(self):
         super(SumMaxV2).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the min AND max colors are unique
         solution_unique = False
         while not solution_unique:
@@ -648,7 +648,7 @@ class SumMaxV2(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         min_key = min(color_count, key=color_count.get)
         max_key = max(color_count, key=color_count.get)
@@ -662,7 +662,7 @@ class DiffMinV2(Task):
     def __init__(self):
         super(DiffMinV2).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the min AND max colors are unique
         solution_unique = False
         while not solution_unique:
@@ -676,7 +676,7 @@ class DiffMinV2(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         min_key = min(color_count, key=color_count.get)
         max_key = max(color_count, key=color_count.get)
@@ -691,7 +691,7 @@ class DiffMaxV2(Task):
     def __init__(self):
         super(DiffMaxV2).__init__()
 
-    def generateInput(self):
+    def _generateInput(self):
         # only allow generating grid for which the min AND max colors are unique
         solution_unique = False
         while not solution_unique:
@@ -705,7 +705,7 @@ class DiffMaxV2(Task):
 
         return tmp
 
-    def generateOutput(self, input_grid):
+    def _generateOutput(self, input_grid):
         color_count = grid_utils.colorCount(input_grid)
         min_key = min(color_count, key=color_count.get)
         max_key = max(color_count, key=color_count.get)

@@ -35,26 +35,13 @@ def generate(task_list, level, number, k=5):
 
         task_idx = np.random.choice(np.arange(len(task_list[level_idx])))
 
-        support_inputs = []
-        support_outputs = []
-        query_inputs = []
-        query_outputs = []
-
         task_instance = task_list[level_idx][task_idx]()
 
-        for _ in range(k):
-            input_grid = task_instance.generateInput()
-            output_grid = task_instance.generateOutput(input_grid)
+        support_inputs = task_instance.generateInputs(k)
+        support_outputs = task_instance.generateOutputs(support_inputs)
 
-            support_inputs.append(input_grid)
-            support_outputs.append(output_grid)
-
-        for _ in range(k):
-            input_grid = task_instance.generateInput()
-            output_grid = task_instance.generateOutput(input_grid)
-
-            query_inputs.append(input_grid)
-            query_outputs.append(output_grid)
+        query_inputs = task_instance.generateInputs(k)
+        query_outputs = task_instance.generateOutputs(query_inputs)
 
         return support_inputs, support_outputs, query_inputs, query_outputs
 
