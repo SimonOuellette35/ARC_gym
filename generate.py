@@ -80,6 +80,9 @@ if args.task == 'all' or args.task == 'cardinality':
 
     training_task_dict, test_task_dict = meta_split(task_list, float(args.split))
 
+    # TODO: temporarily until we implement all curriculum levels:
+    curriculum_level = 0
+    
     training_samples = generate(training_task_dict, curriculum_level, int(args.number))
     file_utils.save(training_samples, "%s/training" % args.output)
 

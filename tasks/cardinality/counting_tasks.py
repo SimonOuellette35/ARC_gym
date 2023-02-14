@@ -1,6 +1,7 @@
 from tasks.Task import Task
 import utils.grid_utils as grid_utils
 import numpy as np
+import random
 
 class MinColorFillBasic(Task):
 
@@ -410,11 +411,40 @@ class EqualityTestMaxV1(Task):
     def __init__(self):
         super(EqualityTestMaxV1).__init__()
 
+    def generateInputs(self, k):
+        input_grids = []
+
+        num_equal = round(k/2)
+        for _ in range(num_equal):
+            ok = False
+            while not ok:
+                tmp_grid = self._generateInput()
+
+                color_count = grid_utils.colorCount(tmp_grid)
+                color_vals = list(color_count.values())
+
+                if color_vals[0] == color_vals[1]:
+                    ok = True
+
+            input_grids.append(tmp_grid)
+
+        for _ in range(k - num_equal):
+            ok = False
+            while not ok:
+                tmp_grid = self._generateInput()
+
+                color_count = grid_utils.colorCount(tmp_grid)
+                color_vals = list(color_count.values())
+
+                if color_vals[0] != color_vals[1]:
+                    ok = True
+
+            input_grids.append(tmp_grid)
+
+        random.shuffle(input_grids)
+        return input_grids
+
     def _generateInput(self):
-        # TODO: must make sure that in half of the query examples, you have color_vals[0] != color_vals[1], and in the
-        #  other half, you have the other case!
-        #  This means the outer loop must not control the generation of batches of query examples, it must be managed
-        #  within this task so that it can control the distribution!
         return grid_utils.generateRandomPixels(num_groups=2)
 
     def _generateOutput(self, input_grid):
@@ -445,11 +475,40 @@ class EqualityTestMinV1(Task):
     def __init__(self):
         super(EqualityTestMinV1).__init__()
 
+    def generateInputs(self, k):
+        input_grids = []
+
+        num_equal = round(k/2)
+        for _ in range(num_equal):
+            ok = False
+            while not ok:
+                tmp_grid = self._generateInput()
+
+                color_count = grid_utils.colorCount(tmp_grid)
+                color_vals = list(color_count.values())
+
+                if color_vals[0] == color_vals[1]:
+                    ok = True
+
+            input_grids.append(tmp_grid)
+
+        for _ in range(k - num_equal):
+            ok = False
+            while not ok:
+                tmp_grid = self._generateInput()
+
+                color_count = grid_utils.colorCount(tmp_grid)
+                color_vals = list(color_count.values())
+
+                if color_vals[0] != color_vals[1]:
+                    ok = True
+
+            input_grids.append(tmp_grid)
+
+        random.shuffle(input_grids)
+        return input_grids
+
     def _generateInput(self):
-        # TODO: must make sure that in half of the query examples, you have color_vals[0] != color_vals[1], and in the
-        #  other half, you have the other case!
-        #  This means the outer loop must not control the generation of batches of query examples, it must be managed
-        #  within this task so that it can control the distribution!
         return grid_utils.generateRandomPixels(num_groups=2)
 
     def _generateOutput(self, input_grid):
@@ -481,11 +540,40 @@ class EqualityTestV2(Task):
         self.equal_color = np.random.choice(np.arange(1, 10))
         self.unequal_color = np.random.choice(np.concatenate((np.arange(1, self.equal_color), np.arange(self.equal_color + 1, 10))))
 
+    def generateInputs(self, k):
+        input_grids = []
+
+        num_equal = round(k/2)
+        for _ in range(num_equal):
+            ok = False
+            while not ok:
+                tmp_grid = self._generateInput()
+
+                color_count = grid_utils.colorCount(tmp_grid)
+                color_vals = list(color_count.values())
+
+                if color_vals[0] == color_vals[1]:
+                    ok = True
+
+            input_grids.append(tmp_grid)
+
+        for _ in range(k - num_equal):
+            ok = False
+            while not ok:
+                tmp_grid = self._generateInput()
+
+                color_count = grid_utils.colorCount(tmp_grid)
+                color_vals = list(color_count.values())
+
+                if color_vals[0] != color_vals[1]:
+                    ok = True
+
+            input_grids.append(tmp_grid)
+
+        random.shuffle(input_grids)
+        return input_grids
+
     def _generateInput(self):
-        # TODO: must make sure that in half of the query examples, you have color_vals[0] != color_vals[1], and in the
-        #  other half, you have the other case!
-        #  This means the outer loop must not control the generation of batches of query examples, it must be managed
-        #  within this task so that it can control the distribution!
         return grid_utils.generateRandomPixels(num_groups=2)
 
     def _generateOutput(self, input_grid):
