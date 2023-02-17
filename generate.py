@@ -30,7 +30,7 @@ if args.task == 'all' or args.task == 'cardinality':
     else:
         curriculum_level = args.level
 
-    generator = SampleGenerator(args.task, args.level, args.number, args.split, args.output)
+    generator = SampleGenerator(args.task, args.level, args.number, args.split)
 
     training_samples, test_samples = generator.generateDataset()
     file_utils.save(training_samples, "%s/training" % args.output)

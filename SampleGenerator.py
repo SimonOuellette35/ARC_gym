@@ -4,11 +4,10 @@ import numpy as np
 
 class SampleGenerator:
 
-    def __init__(self, task_group="all", level="all", number=100, split=0.8, output_path="."):
+    def __init__(self, task_group="all", level="all", number=100, split=0.8):
         self.task_list = cardinality_tasks.task_list
         self.split = split
         self.number = number
-        self.output_path = output_path
         self.level = level
         self.task_group = task_group
 
