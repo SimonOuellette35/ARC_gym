@@ -17,6 +17,12 @@ in the human brain).
 The goal of ARC gym is to provide this missing training framework in order to solve the ARC challenge.
 
 ###### Usage
+
+There are essentially two ways of using ARC gym. The first is to generate training and test files for an external
+algorithm to use. The second is to use it as an API to programmatically generate tasks for a learning algorithm.
+
+### 1. Data file generation script
+
 ```
 $ python generate.py -t <task> -l <level> -o <output_path> -n <number> -s <split>
 ```
@@ -41,6 +47,22 @@ is another task), while a task sample is a particular random instantiation of a 
 on different tasks, not just different task samples.
 
 Generated data files can then be opened and used with the app found on https://github.com/fchollet/ARC
+
+### 2. SampleGenerator API
+
+Instantiate a SampleGenerator object, passing in the same arguments as the command line script.
+
+Then, call generateDataset(). This will return 2 lists: a list of training data samples, and a list of test data samples.
+
+Each element in a list is a tuple: (support_inputs, support_outputs, query_inputs, query_outputs), where:
+
+* support_inputs: list of k input grids for the task demonstration
+* support_outputs: list of k output grids for the task demonstration
+* query_inputs: list of k input grids for the task test.
+* query_outputs: list of k output grids for the task test (used for training and/or evaluation)
+
+You can also, instead, call directly the generateTaskSamples method. This will draw "number" task samples from
+the specified "task_list". See tasks.cardinality.task_list for a "task_list" example.
 
 ##### Roadmap
 * Expose an API so that learning algorithms can programmatically interact with, and request, tasks from the training framework.
