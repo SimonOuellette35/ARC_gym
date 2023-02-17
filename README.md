@@ -41,3 +41,12 @@ is another task), while a task sample is a particular random instantiation of a 
 on different tasks, not just different task samples.
 
 Generated data files can then be opened and used with the app found on https://github.com/fchollet/ARC
+
+##### Roadmap
+* Build some Proof-of-concept solution (transformer-based? DSL-based?) on the cardinality core skill, to show that it can learn to generalize out-of-distribution on that group.
+* Implement the "Objectness" core skill.
+* Extend proof-of-concept learner to the "Objectness" core skill.
+* Implement Level 1 tasks on the cardinality core skill.
+* See if the proof-of-concept learner is able to generalize out-of-distribution on some ARC tasks that only require objectness and cardinality concepts.
+* Implement remaining core skills (levels 0 and 1): transforms, positioning, patterns.
+* Evaluate quantitatively how these new tasks translate into new solved tasks on the ARC. Is the curve linear? exponential?
