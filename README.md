@@ -43,6 +43,7 @@ on different tasks, not just different task samples.
 Generated data files can then be opened and used with the app found on https://github.com/fchollet/ARC
 
 ##### Roadmap
+* Expose an API so that learning algorithms can programmatically interact with, and request, tasks from the training framework.
 * Build some Proof-of-concept solution (transformer-based? DSL-based?) on the cardinality core skill, to show that it can learn to generalize out-of-distribution on that group.
 * Implement the "Objectness" core skill.
 * Extend proof-of-concept learner to the "Objectness" core skill.
