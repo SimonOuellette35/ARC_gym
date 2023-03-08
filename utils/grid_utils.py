@@ -36,12 +36,11 @@ def generateRandomPixelRows(num_groups=None):
 
     return output_grid
 
-def generateRandomPixels(num_groups=None, max_pixels=15):
-    min_dim = 1
+def generateRandomPixels(num_groups=None, max_pixels_per_color=15, max_pixels_total=None, grid_dim_min=3, grid_dim_max=30):
     if num_groups is not None:
-        min_dim = num_groups
+        grid_dim_min = num_groups
 
-    random_dim = np.random.choice(np.arange(min_dim, 30))
+    random_dim = np.random.choice(np.arange(grid_dim_min, grid_dim_max+1))
     output_grid = generateEmptyGrid(0, random_dim)
 
     selected_colors = np.arange(1, 10)
@@ -53,6 +52,7 @@ def generateRandomPixels(num_groups=None, max_pixels=15):
 
     sparsity = np.random.uniform()
 
+    total_px_count = 0
     pixel_count_dict = {}
     if num_groups is not None:
         for i in range(num_groups):
@@ -60,10 +60,13 @@ def generateRandomPixels(num_groups=None, max_pixels=15):
 
     for x in range(random_dim):
         for y in range(random_dim):
+            if max_pixels_total is not None and total_px_count >= max_pixels_total:
+                break
+
             r = np.random.uniform()
             if r < sparsity:
                 tmp_color = getRandomColor(selected_colors)
-                if tmp_color in pixel_count_dict and pixel_count_dict[tmp_color] >= max_pixels:
+                if tmp_color in pixel_count_dict and pixel_count_dict[tmp_color] >= max_pixels_per_color:
                     continue
 
                 output_grid[x, y] = tmp_color
@@ -71,6 +74,8 @@ def generateRandomPixels(num_groups=None, max_pixels=15):
                     pixel_count_dict[tmp_color] += 1
                 else:
                     pixel_count_dict[tmp_color] = 1
+
+                total_px_count += 1
 
     # Note: by chance it can happen that the grid is empty, but we want at least 1 pixel
     if num_groups is None:
@@ -109,6 +114,15 @@ def colorCount(input_grid):
                     color_count[input_grid[x, y]] = 1
 
     return color_count
+
+def pixelCount(input_grid):
+    pixel_count = 0
+    for x in range(input_grid.shape[0]):
+        for y in range(input_grid.shape[1]):
+            if input_grid[x, y] != 0:
+                pixel_count += 1
+
+    return pixel_count
 
 
 def colorFillGrid(input_grid, color):

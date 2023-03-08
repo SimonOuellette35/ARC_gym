@@ -1,6 +1,5 @@
 import tasks.cardinality.counting_tasks as tasks
 
-# TODO: list of all task generation objects
 task_list = {
     0: [tasks.MinColorFillBasic,
         tasks.MaxColorFillBasic,
@@ -27,7 +26,8 @@ task_list = {
         tasks.SumMinV2,
         tasks.SumMaxV2,
         tasks.DiffMinV2,
-        tasks.DiffMaxV2
+        tasks.DiffMaxV2,
+        tasks.BasicCountingV1
         ],
     1: [],
     2: []

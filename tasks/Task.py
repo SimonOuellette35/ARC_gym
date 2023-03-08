@@ -1,8 +1,9 @@
 
 class Task:
 
-    def __init__(self):
-        pass
+    def __init__(self, grid_dim_min=3, grid_dim_max=30):
+        self.grid_dim_min = grid_dim_min
+        self.grid_dim_max = grid_dim_max
 
     def generateInputs(self, k):
         input_grids = []
