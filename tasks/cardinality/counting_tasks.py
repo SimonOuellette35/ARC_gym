@@ -804,13 +804,43 @@ class DiffMaxV2(Task):
 
 class BasicCountingV1(Task):
 
-    def __init__(self, grid_dim_min=3, grid_dim_max=30):
+    def __init__(self, grid_dim_min=3, grid_dim_max=30, num_px_min=0, num_px_max=10):
         super(BasicCountingV1, self).__init__(grid_dim_min, grid_dim_max)
+        self.num_px_min = num_px_min
+        self.num_px_max = num_px_max
 
     def generateInputs(self, k):
         input_grids = []
         for _ in range(k):
-            num_px = np.random.choice(np.arange(10))
+            num_px = np.random.choice(np.arange(self.num_px_min, self.num_px_max))
+            tmp_grid = self._generateInput(num_px)
+            input_grids.append(tmp_grid)
+
+        random.shuffle(input_grids)
+        return input_grids
+
+    def _generateInput(self, mpt):
+        return grid_utils.generateRandomPixels(max_pixels_total=mpt,
+                                               grid_dim_min=self.grid_dim_min,
+                                               grid_dim_max=self.grid_dim_max)
+
+    def _generateOutput(self, input_grid):
+        pixel_count = grid_utils.pixelCount(input_grid)
+        pixel_count_binary = grid_utils.decimalToBinary(pixel_count, dim=9)
+        pixel_count_binary = pixel_count_binary[::-1]
+        return np.reshape(pixel_count_binary, [3, 3])
+
+class BasicCountingV2(Task):
+
+    def __init__(self, grid_dim_min=3, grid_dim_max=30, num_px_min=1, num_px_max=10):
+        super(BasicCountingV2, self).__init__(grid_dim_min, grid_dim_max)
+        self.num_px_min = num_px_min
+        self.num_px_max = num_px_max
+
+    def generateInputs(self, k):
+        input_grids = []
+        for _ in range(k):
+            num_px = np.random.choice(np.arange(self.num_px_min, self.num_px_max))
             tmp_grid = self._generateInput(num_px)
             input_grids.append(tmp_grid)
 

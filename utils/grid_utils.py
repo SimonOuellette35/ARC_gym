@@ -36,6 +36,13 @@ def generateRandomPixelRows(num_groups=None):
 
     return output_grid
 
+def decimalToBinary(decValue, dim=16):
+    binValue = np.zeros(dim)
+    tmp_bin_list = [int(x) for x in list('{0:0b}'.format(decValue))]
+    binValue[-len(tmp_bin_list):] = tmp_bin_list
+
+    return binValue
+
 def generateRandomPixels(num_groups=None, max_pixels_per_color=15, max_pixels_total=None, grid_dim_min=3, grid_dim_max=30):
     if num_groups is not None:
         grid_dim_min = num_groups
