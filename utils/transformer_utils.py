@@ -1,8 +1,7 @@
-import random
 import numpy as np
 import torch
 
-bins = [8, 12, 16, 20, 24, 28, 32, 36, 40, 48, 64, 100]
+bins = [1, 4, 9, 16, 25, 36, 49, 64, 81, 100, 400]
 forward_max = 400
 
 def pad(l):
