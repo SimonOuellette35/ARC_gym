@@ -39,7 +39,7 @@ class ColorOfMaxBasic(Task):
         while not solution_unique:
             tmp = grid_utils.generateRandomPixels(grid_dim_min=self.grid_dim_min, grid_dim_max=self.grid_dim_max)
             color_count = grid_utils.colorCount(tmp)
-            color_values = sorted(color_count.values())
+            color_values = sorted(color_count.values(), reverse=True)
             if len(color_values) == 1 or color_values[0] != color_values[1]:
                 # solution unique!
                 solution_unique = True
