@@ -43,7 +43,12 @@ def decimalToBinary(decValue, dim=16):
 
     return binValue
 
-def generateRandomPixels(num_groups=None, max_pixels_per_color=15, max_pixels_total=None, grid_dim_min=3, grid_dim_max=30):
+def generateRandomPixels(num_groups=None,
+                         max_pixels_per_color=15,
+                         max_pixels_total=None,
+                         grid_dim_min=3,
+                         grid_dim_max=30,
+                         sparsity=None):
     if num_groups is not None:
         grid_dim_min = num_groups
 
@@ -57,7 +62,8 @@ def generateRandomPixels(num_groups=None, max_pixels_per_color=15, max_pixels_to
         random.shuffle(color_choices)
         selected_colors = color_choices[:num_groups]
 
-    sparsity = np.random.uniform()
+    if sparsity is None:
+        sparsity = np.random.uniform()
 
     total_px_count = 0
     pixel_count_dict = {}
@@ -128,6 +134,16 @@ def pixelCount(input_grid):
         for y in range(input_grid.shape[1]):
             if input_grid[x, y] != 0:
                 pixel_count += 1
+
+    return pixel_count
+
+def perColorPixelCount(input_grid):
+    pixel_count = np.zeros(9)
+    for x in range(input_grid.shape[0]):
+        for y in range(input_grid.shape[1]):
+            if input_grid[x, y] != 0:
+                idx = int(input_grid[x, y] - 1)
+                pixel_count[idx] += 1
 
     return pixel_count
 

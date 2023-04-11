@@ -30,18 +30,19 @@ class UTTaskDataGenerator:
     # height = None
     # min_length = 1
 
-    def __init__(self, task, grid_dim=10):
+    def __init__(self, task, input_grid_dim=10, output_grid_dim=1):
         self.task = task
-        self.grid_dim = grid_dim
+        self.input_grid_dim = input_grid_dim
+        self.output_grid_dim = output_grid_dim
 
     def is_valid_length(self, l):
         """Can this problem have instances of length l?"""
         return True
 
     def rand_pair(self, length):
-        if (self.grid_dim * self.grid_dim) > length:
+        if (self.input_grid_dim * self.input_grid_dim) > length:
             print("length = ", length)
-            print("self.grid_dim = ", self.grid_dim)
+            print("self.grid_dim = ", self.input_grid_dim)
             print("Error: your grid dimensionality is too large for the specified sequence length.")
             exit(-1)
 
@@ -75,7 +76,7 @@ class UTTaskDataGenerator:
         """Construct a complete batch of problem instances"""
         inps, outps = [], []
         for _ in range(batch_size):
-            inp, outp = self.rand_pair_padded(length, rand_length)
+            inp, outp = self.rand_pair(length)
             inps.append(inp)
             outps.append(outp)
 
