@@ -923,6 +923,7 @@ class BasicCountingV3(Task):
 
     def _generateInput(self, mpt):
         return grid_utils.generateRandomPixels(max_pixels_total=mpt,
+                                               max_pixels_per_color=self.num_px_max,
                                                grid_dim_min=self.grid_dim_min,
                                                grid_dim_max=self.grid_dim_max,
                                                sparsity=0.8)
