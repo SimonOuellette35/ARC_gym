@@ -43,11 +43,11 @@ Most of the important characteristics, however, are defined when calling the met
 * **k**: the number of support examples (i.e. the number of input-output grid examples for each task sample)
 * **max_graphs**: the maximum number of computational graphs to pre-generate before randomly picking the trainN and testN tasks among them. Default: 500. Should be bigger than trainN and testN. This is needed because the currently used graph generation algorithm yields the graphs in a deterministic, gradually increasing order of complexity. Then, we shuffle the generated graphs and pick trainN and testN among them. The bigger this value, the better -- but the bigger this value, the slower the data generation.
 
-instantiateExperiment() returns 4 values: meta_train_dataset, meta_test_dataset, meta_train_tasks, meta_test_tasks. The last 2 are only used if you want to call the distMetrics.quantify_comp_graph_OOD() function to calculate the OODness of your meta-dataset.
+instantiateExperiment() returns 4 values: meta_train_dataset, meta_test_dataset, meta_train_tasks, meta_test_tasks. The last 2 are only used if you want to use the quantify_comp_graph_OOD() utility function to calculate the OODness of your meta-dataset.
 
 The first two values are ARCGymDataset instances representing respectively your meta-training set and meta-test set. You can then use the PyTorch DataLoader class, if desired, to loop over them for batch training purposes, for example.
 
-Finally, there is the distributionMetrics.quantify_comp_graph_OOD function that can be useful to evaluate the OODness of your generated meta-dataset. See 'Example usage' section.
+Finally, there is the metrics.quantify_comp_graph_OOD function that can be useful to evaluate the OODness of your generated meta-dataset. See 'Example usage' section.
 
 ###### Distributional characteristics
 
