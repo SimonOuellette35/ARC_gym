@@ -88,7 +88,7 @@ In the test grids, the probability distribution over the x and y axes is uniform
 
 ###### Dataset format (ARCGymDataset)
 
-The ARCGymDataset is an iterable that yields tasks samples formatted as dictionaries of the following format:
+The ARCGymDataset is an iterable that yields task samples formatted as dictionaries of the following format:
 
 ```
 'xs': <numpy array of shape [k, grid_size, grid_size]>,
@@ -98,11 +98,11 @@ The ARCGymDataset is an iterable that yields tasks samples formatted as dictiona
 'task_desc': <string description of this task sample>
 ```
 
-This format was used to be easily integratable to the "MLC" project by Lake & Baroni (2023): https://github.com/brendenlake/MLC-ML.
+This format was used to be easily integrated to the "MLC" project by Lake & Baroni (2023): https://github.com/brendenlake/MLC-ML.
 
-Because each iteration select 1 task and provides only 1 example of that task, chances are you will want to use a DataLoader object to generate batches for you. In particular, if you intend to train a seq-to-seq model such as a Transformer, you can use the make_biml_batch collation function (see 'Example usage' section) to generate "in-context learning" type of sequences.
+Because each iteration selects 1 task and provides only 1 sample (_k_ input-output examples) of that task, chances are you will want to use a DataLoader object to generate batches for you. In particular, if you intend to train a seq-to-seq model such as a Transformer, you can use the make_biml_batch() utility function (see 'Example usage' section) to generate "in-context learning" type of sequences.
 
-An example of a task_desc is: (input ==> copy_left)(input ==> draw_vertical_split)(copy_left ==> draw_vertical_split)(draw_vertical_split ==> output). This loosely describes the computational graph that is executed for this task, using the primitive "names" as defined in primitives.py _get_total_set()_. This dictionary entry is only there for troubleshooting purposes, and should not be used for training models or solving tasks.
+An example of a 'task_desc' is: (input ==> copy_left)(input ==> draw_vertical_split)(copy_left ==> draw_vertical_split)(draw_vertical_split ==> output). This loosely describes the computational graph that is executed for this task, using the primitive "names" as defined in primitives.py _get_total_set()_. This dictionary entry is only there for troubleshooting purposes, and should not be used for training models or solving tasks.
 
 ###### Example usage
 
