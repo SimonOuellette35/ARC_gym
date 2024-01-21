@@ -2,7 +2,6 @@ import numpy as np
 from functools import partial
 from ARC_gym.dataset import COLOR_MAP
 
-D = 5
 
 def get_total_set():
     return [
@@ -37,6 +36,7 @@ def get_total_set():
 
 def draw_horizontal_split(grid):
     result = np.copy(grid)
+    D = grid.shape[0]
     for i in range(D):
         result[int(D/2), i] = 3
 
@@ -44,6 +44,7 @@ def draw_horizontal_split(grid):
 
 def draw_vertical_split(grid):
     result = np.copy(grid)
+    D = grid.shape[0]
     for i in range(D):
         result[i, int(D / 2)] = 6
 
@@ -51,6 +52,7 @@ def draw_vertical_split(grid):
 
 def draw_diagonal1(grid):
     result = np.copy(grid)
+    D = grid.shape[0]
     for i in range(D):
         result[i, i] = 8
 
@@ -58,6 +60,7 @@ def draw_diagonal1(grid):
 
 def draw_diagonal2(grid):
     result = np.copy(grid)
+    D = grid.shape[0]
     for i in range(D):
         result[i, D-i-1] = 9
 
@@ -72,6 +75,7 @@ def swap_pixels(grid, from_color, to_color):
 
 def copy_right(grid):
     result = np.copy(grid)
+    D = grid.shape[0]
     for i in range(D):
         for j in range(D-1):
             if grid[i, j] != 0:
@@ -82,6 +86,7 @@ def copy_right(grid):
 
 def copy_left(grid):
     result = np.copy(grid)
+    D = grid.shape[0]
     for i in range(D):
         for j in range(1, D):
             if grid[i, j] != 0:
@@ -92,6 +97,7 @@ def copy_left(grid):
 
 def copy_down(grid):
     result = np.copy(grid)
+    D = grid.shape[0]
     for i in range(1, D):
         for j in range(D):
             if grid[i, j] != 0:
@@ -102,6 +108,7 @@ def copy_down(grid):
 
 def copy_up(grid):
     result = np.copy(grid)
+    D = grid.shape[0]
     for i in range(D-1):
         for j in range(D):
             if grid[i, j] != 0:
@@ -112,6 +119,7 @@ def copy_up(grid):
 
 def move_right(grid):
     result = np.zeros_like(grid)
+    D = grid.shape[0]
     for i in range(D):
         for j in range(D):
             if grid[i, j] != 0:
@@ -124,6 +132,7 @@ def move_right(grid):
 
 def move_left(grid):
     result = np.zeros_like(grid)
+    D = grid.shape[0]
     for i in range(D):
         for j in range(D):
             if grid[i, j] != 0:
@@ -136,6 +145,7 @@ def move_left(grid):
 
 def move_down(grid):
     result = np.zeros_like(grid)
+    D = grid.shape[0]
     for i in range(D):
         for j in range(D):
             if grid[i, j] != 0:
@@ -148,6 +158,7 @@ def move_down(grid):
 
 def move_up(grid):
     result = np.zeros_like(grid)
+    D = grid.shape[0]
     for i in range(D):
         for j in range(D):
             if grid[i, j] != 0:

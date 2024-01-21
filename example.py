@@ -10,6 +10,7 @@ test_batch_size = 10
 NUM_TRAIN_TASKS = 500
 NUM_TEST_TASKS = 10
 MAX_GRAPHS = 250
+GRID_DIM = 6
 
 comp_graph_dist = {
     'train': {
@@ -23,18 +24,18 @@ comp_graph_dist = {
 grid_dist = {
     'train': {
         'num_pixels': [1, 5],
-        'space_dist_x': np.ones(5) / 5.,
-        'space_dist_y': np.ones(5) / 5.
+        'space_dist_x': np.ones(GRID_DIM) / float(GRID_DIM),
+        'space_dist_y': np.ones(GRID_DIM) / float(GRID_DIM)
     },
     'test': {
         'num_pixels': [1, 5],
-        'space_dist_x': np.ones(5) / 5.,
-        'space_dist_y': np.ones(5) / 5.
+        'space_dist_x': np.ones(GRID_DIM) / float(GRID_DIM),
+        'space_dist_y': np.ones(GRID_DIM) / float(GRID_DIM)
     }
 }
 
 # Instantiate an experiment and corresponding data loaders
-dgp = MetaDGP()
+dgp = MetaDGP(grid_size=GRID_DIM)
 meta_train_dataset, meta_test_dataset, meta_train_tasks, meta_test_tasks = dgp.instantiateExperiment(
     trainN=NUM_TRAIN_TASKS,
     testN=NUM_TEST_TASKS,

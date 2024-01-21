@@ -10,19 +10,20 @@ def exact_match(a_batch, b_batch):
 
 def quantify_comp_graph_OOD(train_dataset, train_task, test_dataset, test_task, modules):
 
-    print("Quantifying OOD-ness over %i distinct tasks." % (len(test_dataset)))
+    print("Quantifying OOD-ness over %i test tasks." % (len(test_dataset)))
     oodness = len(test_dataset)
     for test_task_idx in range(len(test_dataset)):
         for train_task_idx in range(len(train_dataset)):
             train_sample = train_dataset[train_task_idx]
             test_sample = test_dataset[test_task_idx]
+            grid_dim = train_sample['xs'].shape[1]
 
             x = np.concatenate((train_sample['xs'],
                                 train_sample['xq'],
                                 test_sample['xs'],
                                 test_sample['xq']), axis=0)
 
-            x = np.reshape(x, [x.shape[0], 5, 5])
+            x = np.reshape(x, [x.shape[0], grid_dim, grid_dim])
 
             train_y = []
             test_y = []

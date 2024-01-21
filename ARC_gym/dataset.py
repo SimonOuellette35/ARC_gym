@@ -75,12 +75,13 @@ class ARCGymDataset(Dataset):
 
         space_dist_x = metadata['space_dist_x']
         space_dist_y = metadata['space_dist_y']
-        if np.sum(space_dist_x) != 1:
+        eps = 1e-5
+        if np.sum(space_dist_x) < 1.0 - eps or np.sum(space_dist_x) > 1.0 + eps:
             print("WARNING: spatial distribution probabilities for X axis did not sum up to exactly 1, normalizing probabilities.")
             space_dist_x = normalize_probabilities(space_dist_x)
             print("\tNew x axis distribution: ", space_dist_x)
 
-        if np.sum(space_dist_y) != 1:
+        if np.sum(space_dist_y) < 1.0 - eps or np.sum(space_dist_y) > 1.0 + eps:
             print("WARNING: spatial distribution probabilities for Y axis did not sum up to exactly 1, normalizing probabilities.")
             space_dist_y = normalize_probabilities(space_dist_y)
             print("\tNew y axis distribution: ", space_dist_y)
