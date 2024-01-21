@@ -3,8 +3,8 @@ import ARC_gym.dataset as dataset
 
 def draw_batch(dataloader, num_examples, k):
     for S in dataloader:
-        batch_xs = S['xs'].cpu().data.numpy()
-        batch_ys = S['ys'].cpu().data.numpy()
+        batch_xs = S['xs']
+        batch_ys = S['ys']
         batch_desc = S['task_desc']
 
         for batch_idx in range(num_examples):   # Number of distinct task examples to show

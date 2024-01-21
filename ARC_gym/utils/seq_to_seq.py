@@ -35,9 +35,7 @@ def make_biml_batch(batch, ITEM_token=11, IOSEP_token=12, k=5):
             xq_xs_ys.append(tmp)
 
         mybatch['xq+xs+ys'].append(torch.from_numpy(np.array(xq_xs_ys)))
-
         mybatch['q_idx'].append(task_idx * torch.ones(1, dtype=torch.int))
-
         mybatch['s_idx'].append(task_idx * torch.ones(k, dtype=torch.int))
 
     mybatch['q_idx'] = torch.cat(mybatch['q_idx'], dim=0)

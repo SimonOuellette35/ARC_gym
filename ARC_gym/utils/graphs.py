@@ -3,11 +3,16 @@ import itertools
 import numpy as np
 import random
 import copy
+from tqdm import tqdm
+
 
 def generate_all_directed_graphs(num_modules, metadata, max_graphs):
     generated_graphs = []
     counter = 0
     nodes = np.arange(1, num_modules+1)
+
+    progress_bar = tqdm(total=max_graphs)
+
     for r in range(2, len(nodes) + 1):
         for sub_nodes in itertools.combinations(nodes, r):
 
@@ -48,12 +53,15 @@ def generate_all_directed_graphs(num_modules, metadata, max_graphs):
                         continue
 
                     generated_graphs.append(copy.deepcopy(G))
+                    progress_bar.update(1)
                     counter += 1
                     if len(generated_graphs) >= max_graphs:
                         random.shuffle(generated_graphs)
+                        progress_bar.close()
                         return generated_graphs
 
     random.shuffle(generated_graphs)
+    progress_bar.close()
     return generated_graphs
 
 def get_desc(ts, modules):

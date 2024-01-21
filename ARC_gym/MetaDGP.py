@@ -2,7 +2,6 @@ import ARC_gym.primitives as primitives
 import random
 import ARC_gym.utils.graphs as graphUtils
 from ARC_gym.dataset import ARCGymDataset
-from tqdm import tqdm
 
 
 class MetaDGP:
@@ -16,6 +15,10 @@ class MetaDGP:
     def instantiateExperiment(self, trainN, testN, num_modules, comp_graph_dist, grid_dist,
                               k=5, max_graphs=500, augment_data=False):
         self.primitives = random.sample(self.total_primitive_set, num_modules)    # get a subset from the existing ones
+
+        if comp_graph_dist['train']['num_nodes'][0] < 2 or comp_graph_dist['test']['num_nodes'][0] < 2:
+            print("ERROR: num_nodes attribute in the computational graph characteristics must have a minimal value no smaller than 2.")
+            exit(1)
 
         # Determine meta-train characteristics
         self.meta_train = {
@@ -83,7 +86,7 @@ class MetaDGP:
         generated_graphs = graphUtils.generate_all_directed_graphs(len(self.modules), metadata, max_graphs)
         print("==> Length of generated graphs = ", len(generated_graphs))
 
-        for graph in tqdm(generated_graphs, total=N):
+        for graph in generated_graphs:
             ts = graphUtils.generate_topological_sorts(graph)[0]
 
             G_list.append((graph, ts))
