@@ -9,7 +9,7 @@ be set in the file _primitives.py_), we set aside the problem of identifying the
 intentionally much simpler than the ARC challenge, allowing us to focus on the two difficult challenges of:
 
 1. Compositional generalization: how do we build an algorithm that is able to learn "core skills" and re-combine them to few-shot learn new tasks, especially ones that are out-of-distribution with respect to the training set? i.e. how can we learn to solve novel tasks by merely re-combining modular knowledge?
-2. Efficient search: when the number of primitives and/or the complexity of the tasks is especially high, searching over the space of possible solutions can be prohibitively slow. How do we build algorithms that posses a strong "intuition", capable of efficiently reducing the search space?
+2. Efficient search: when the number of primitives and/or the complexity of the tasks is especially high, searching over the space of possible solutions can be prohibitively slow. How do we build algorithms that possess a strong "intuition", capable of efficiently reducing the search space?
 
 ###### Getting started
 
