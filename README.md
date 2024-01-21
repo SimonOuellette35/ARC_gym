@@ -110,7 +110,7 @@ An example of a 'task_desc' is: (input ==> copy_left)(input ==> draw_vertical_sp
 
 ```
 from ARC_gym.MetaDGP import MetaDGP
-import ARC_gym.utils.metrics as distMetrics
+import ARC_gym.utils.metrics as metrics
 
 // instantiate the experiment
 dgp = MetaDGP()
@@ -123,8 +123,7 @@ meta_train_dataset, meta_test_dataset, meta_train_tasks, meta_test_tasks = dgp.i
     max_graphs=500)
     
 // Quantify the OODness of your generated meta-dataset
-OODness = distMetrics.quantify_comp_graph_OOD(meta_train_dataset, meta_train_tasks,
-                                              meta_test_dataset, meta_test_tasks, dgp.modules)
+OODness = metrics.quantify_comp_graph_OOD(meta_train_dataset, meta_train_tasks, meta_test_dataset, meta_test_tasks, dgp.modules)
 
 print("OODness = ", OODness)
 
