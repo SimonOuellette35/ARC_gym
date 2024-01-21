@@ -26,7 +26,7 @@ Then pip install it:
 pip install -e .
 ```
 
-The quickest way to get started is to start from _example.py_, and modifying it according to your specifications. Read the following sections to better understand how to customize the script.
+The quickest way to get started is to start from _example.py_, and to modify it according to your specifications. Read the following sections to better understand how to customize the script.
 
 ###### Architecture and components
 
