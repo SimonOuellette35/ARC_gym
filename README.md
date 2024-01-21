@@ -181,7 +181,7 @@ import ARC_gym.utils.visualization as viz
 
 // num_examples is the number of task examples to show (will loop through them)
 // k is the number of input-output grids to show per task example (all in the same figure)
-viz.draw_batch(meta_train_dataloader, num_examples=5, k=4)
+viz.draw_batch(meta_train_dataset, num_examples=5, k=4)
 ```
 
 ###### Tips & Things to consider

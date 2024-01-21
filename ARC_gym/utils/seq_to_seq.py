@@ -7,7 +7,7 @@ def make_biml_batch(batch, ITEM_token=11, IOSEP_token=12, k=5):
 
     mybatch = {}
     mybatch['batch_size'] = batch_size
-
+    mybatch['task_desc'] = []
     mybatch['xq'], mybatch['yq'], mybatch['xs'], mybatch['ys'] = [], [], [], []
 
     mybatch['q_idx'] = []  # index of which episode each query belongs to
@@ -37,6 +37,7 @@ def make_biml_batch(batch, ITEM_token=11, IOSEP_token=12, k=5):
         mybatch['xq+xs+ys'].append(torch.from_numpy(np.array(xq_xs_ys)))
         mybatch['q_idx'].append(task_idx * torch.ones(1, dtype=torch.int))
         mybatch['s_idx'].append(task_idx * torch.ones(k, dtype=torch.int))
+        mybatch['task_desc'].append(batch[task_idx]['task_desc'])
 
     mybatch['q_idx'] = torch.cat(mybatch['q_idx'], dim=0)
     mybatch['s_idx'] = torch.cat(mybatch['s_idx'], dim=0)

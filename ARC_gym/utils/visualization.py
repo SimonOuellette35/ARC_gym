@@ -1,21 +1,24 @@
 import matplotlib.pyplot as plt
 import ARC_gym.dataset as dataset
 
-def draw_batch(dataloader, num_examples, k):
-    for S in dataloader:
+def draw_batch(data, num_examples, k):
+
+    current_task_idx = 0
+    for S in data:
+        if current_task_idx >= num_examples:
+            return
+
         batch_xs = S['xs']
         batch_ys = S['ys']
         batch_desc = S['task_desc']
 
-        for batch_idx in range(num_examples):   # Number of distinct task examples to show
-            task_grids = []
-            for k_idx in range(k):              # Number of support set examples to show in one figure
-                task_grids.append(batch_xs[batch_idx][k_idx])
-                task_grids.append(batch_ys[batch_idx][k_idx])
+        task_grids = []
+        for k_idx in range(k):              # Number of support set examples to show in one figure
+            task_grids.append(batch_xs[k_idx])
+            task_grids.append(batch_ys[k_idx])
 
-            draw_grids(task_grids, batch_desc[batch_idx])
-
-        break
+        draw_grids(task_grids, batch_desc)
+        current_task_idx += 1
 
 def draw_single_grid(grid):
     for y in range(len(grid)):
