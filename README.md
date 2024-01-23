@@ -189,6 +189,8 @@ viz.draw_batch(meta_train_dataset, num_examples=5, k=4)
 
 * The graph distributional characteristics (num_nodes, specifically) have an impact on the total possible number of distinct graphs that can be generated. So, for example, if you request a trainN of 200, but you specified a range of nodes such that a total of 190 distinct graphs can be generated, you will get undefined behaviour.
 
+* Suppose that you use max_graphs = 1000, trainN = 1000, testN = 10. If the characteristics of the graphs (num_nodes) are the same for training and test set, you are guaranteed to have an OODness of 0. That is because, given the same characteristics, the first 1000 graphs generated will be the same for the training and test sets (the graph generation algorithm generates graphs in a deterministic manner). Randomly picking 1000 out of these 1000 graphs (without replacement) for the training set means you're training on all of them. Therefore, it's not possible for the test set to be out-of-distribution in this case. That is something to consider if you want to leave "room" for the test set to randomly pick out-of-distribution tasks.
+
 ###### OODness metric
 
 The OODness metric is a value between 0 and 1 inclusively.
