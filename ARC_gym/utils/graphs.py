@@ -6,7 +6,7 @@ import copy
 from tqdm import tqdm
 
 
-def generate_all_directed_graphs(num_modules, metadata, max_graphs):
+def generate_all_directed_graphs(num_modules, metadata, max_graphs, shuffle=True):
     generated_graphs = []
     counter = 0
     nodes = np.arange(1, num_modules+1)
@@ -56,11 +56,13 @@ def generate_all_directed_graphs(num_modules, metadata, max_graphs):
                     progress_bar.update(1)
                     counter += 1
                     if len(generated_graphs) >= max_graphs:
-                        random.shuffle(generated_graphs)
+                        if shuffle:
+                            random.shuffle(generated_graphs)
                         progress_bar.close()
                         return generated_graphs
 
-    random.shuffle(generated_graphs)
+    if shuffle:
+        random.shuffle(generated_graphs)
     progress_bar.close()
     return generated_graphs
 
