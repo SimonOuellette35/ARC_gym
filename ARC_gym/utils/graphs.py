@@ -141,6 +141,56 @@ def executeCompGraph(G, input, modules):
 
     return results[-1]
 
+# This is a variant of executeCompGraph that doesn't expect topological sort as input, it generates it internally.
+# Since ARC_gym combines merged outputs in a way that is order-invariant, all topological sorts of a graph can
+# be considered equivalent, so we can just generate one on the fly here and use it.
+def execute_comp_graph_v2(graph, input, modules):
+
+    nodes = list(graph.nodes)
+
+    toposort = list(nx.topological_sort(nx.line_graph(graph)))
+
+    results = [None] * (len(modules) - 1)
+    results[0] = [input]
+
+    def execute(n, inp_params):
+        model = modules[n - 1]['model']
+        if len(inp_params) == 1:
+            if model is None:
+                return inp_params[0]
+
+            #print("Calling module %s" % (modules[n - 1]['name']))
+            return model(inp_params[0])
+        else:
+            output_grid = np.zeros_like(inp_params[0])
+            for inp in inp_params:
+                output_grid += inp
+
+            sum_inp = output_grid % 10
+            if model is None:
+                return sum_inp
+
+            #print("Calling module %s" % (modules[n-1]['name']))
+            return model(sum_inp)
+
+    for edge in toposort:
+        #print("==> edge = ", edge)
+        inp_params = results[edge[0]-1]
+
+        to_node = edge[1]
+
+        tmp_out = execute(to_node, inp_params)
+        if to_node == nodes[-1]:
+            return tmp_out
+
+        if results[to_node - 1] is None:
+            results[to_node - 1] = [tmp_out]
+        else:
+            # A concatenation is happening
+            results[to_node - 1].append(tmp_out)
+
+    return results[-1]
+
 def get_concatenation_points(graph):
     # 1) get the adjacency matrix, identify concatenation points.
     adj_matrix = nx.to_numpy_array(graph)
