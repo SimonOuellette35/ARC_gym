@@ -1,5 +1,5 @@
 from ARC_gym.MetaDGP import MetaDGP
-from ARC_gym.utils.seq_to_seq import make_biml_batch
+from ARC_gym.utils.batching import make_biml_batch
 from torch.utils.data import DataLoader
 import ARC_gym.utils.metrics as metrics
 import ARC_gym.utils.visualization as viz

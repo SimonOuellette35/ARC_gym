@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-def make_biml_batch(batch, ITEM_token=11, IOSEP_token=12, k=5):
+def make_mlc_batch(batch, ITEM_token=11, IOSEP_token=12, k=5):
 
     batch_size = len(batch)
 
@@ -45,4 +45,31 @@ def make_biml_batch(batch, ITEM_token=11, IOSEP_token=12, k=5):
     mybatch['xq+xs+ys_padded'] = torch.stack(mybatch['xq+xs+ys'])  # m*nq x ns x max_len_q_pairs
     mybatch['yq_padded'] = torch.stack(mybatch['yq'])  # m*nq x ns x max_len_q_pairs
 
+    return mybatch
+
+# This creates batches in essentially the same format as the dataset itself, i.e:
+#  'xs': support example inputs as a tensor [batch_size x k x grid_size * grid_size]
+#  'ys': support example outputs as a tensor [batch_size x k x grid_size * grid_size]
+#  'xq': query example input as a tensor [batch_size x grid_size * grid_size]
+#  'yq': query example output as a tensor [batch_size x grid_size * grid_size]
+#  'task_desc': a string that describes the task [batch_size x string length]
+def make_gridcoder_batch(batch):
+    mybatch = {}
+
+    k = batch[0]['xs'].shape[0]
+    batch_size = len(batch)
+
+    mybatch['xs'], mybatch['ys'], mybatch['xq'], mybatch['yq'] = [], [], [], []
+    mybatch['task_desc'] = []
+
+    for task_idx in range(batch_size):
+        mybatch['xq'].append(torch.from_numpy(np.reshape(batch[task_idx]['xq'], [-1])))
+        mybatch['yq'].append(torch.from_numpy(np.reshape(batch[task_idx]['yq'], [-1])))
+        mybatch['xs'].append(torch.from_numpy(np.reshape(batch[task_idx]['xs'], [k, -1])))
+        mybatch['ys'].append(torch.from_numpy(np.reshape(batch[task_idx]['ys'], [k, -1])))
+
+    mybatch['xq'] = torch.stack(mybatch['xq'], dim=0)
+    mybatch['yq'] = torch.stack(mybatch['yq'], dim=0)
+    mybatch['xs'] = torch.stack(mybatch['xs'], dim=0)
+    mybatch['ys'] = torch.stack(mybatch['ys'], dim=0)
     return mybatch

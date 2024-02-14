@@ -146,7 +146,7 @@ for epoch in range(NUM_EPOCHS):
 
 * make_biml_batch ("in-context learning" type of sequences)
 ```
-from ARC_gym.utils.seq_to_seq import make_biml_batch
+from ARC_gym.utils.batching import make_biml_batch
 
 ...
 
