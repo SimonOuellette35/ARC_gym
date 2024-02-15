@@ -1,25 +1,30 @@
 import matplotlib.pyplot as plt
 import ARC_gym.dataset as dataset
 import torch
+import numpy as np
 
-def draw_dataset(data, num_examples, k):
+def draw_dataset(data_loader, num_examples, k, grid_size=5):
 
     current_task_idx = 0
-    for S in data:
-        if current_task_idx >= num_examples:
-            return
+    for batch in data_loader:
 
-        batch_xs = S['xs']
-        batch_ys = S['ys']
-        batch_desc = S['task_desc']
+        batch_xs = batch['xs']
+        batch_ys = batch['ys']
+        batch_desc = batch['task_desc']
 
-        task_grids = []
-        for k_idx in range(k):              # Number of support set examples to show in one figure
-            task_grids.append(batch_xs[k_idx])
-            task_grids.append(batch_ys[k_idx])
+        print("batch_xs shape = ", batch_xs.shape)
+        for task_idx in range(batch_xs.shape[0]):
+            task_grids = []
+            for k_idx in range(k):              # Number of support set examples to show in one figure
+                task_grids.append(np.reshape(batch_xs[task_idx][k_idx], [grid_size, grid_size]))
+                task_grids.append(np.reshape(batch_ys[task_idx][k_idx], [grid_size, grid_size]))
 
-        draw_grids(task_grids, batch_desc)
-        current_task_idx += 1
+            current_task_idx += 1
+            if current_task_idx >= num_examples:
+                return
+
+            draw_grids(task_grids, batch_desc[task_idx])
+
 
 def draw_batch(data, k, grid_size=5):
 
