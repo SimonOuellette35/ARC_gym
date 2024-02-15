@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import ARC_gym.dataset as dataset
+import torch
 
-def draw_batch(data, num_examples, k):
+def draw_dataset(data, num_examples, k):
 
     current_task_idx = 0
     for S in data:
@@ -20,7 +21,23 @@ def draw_batch(data, num_examples, k):
         draw_grids(task_grids, batch_desc)
         current_task_idx += 1
 
+def draw_batch(data, k, grid_size=5):
+
+    batch_xs = data['xs']
+    batch_ys = data['ys']
+    batch_desc = data['task_desc']
+
+    for batch_idx in range(batch_xs.shape[0]):
+
+        task_grids = []
+        for k_idx in range(k):              # Number of support set examples to show in one figure
+            task_grids.append(torch.reshape(batch_xs[batch_idx][k_idx], [grid_size, grid_size]).cpu().data.numpy())
+            task_grids.append(torch.reshape(batch_ys[batch_idx][k_idx], [grid_size, grid_size]).cpu().data.numpy())
+
+        draw_grids(task_grids, batch_desc)
+
 def draw_single_grid(grid):
+
     for y in range(len(grid)):
         for x in range(len(grid[0])):
             color_idx = int(grid[y][x])
