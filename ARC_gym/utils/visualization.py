@@ -12,7 +12,6 @@ def draw_dataset(data_loader, num_examples, k, grid_size=5):
         batch_ys = batch['ys']
         batch_desc = batch['task_desc']
 
-        print("batch_xs shape = ", batch_xs.shape)
         for task_idx in range(batch_xs.shape[0]):
             task_grids = []
             for k_idx in range(k):              # Number of support set examples to show in one figure
