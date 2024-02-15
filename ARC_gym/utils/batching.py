@@ -67,9 +67,11 @@ def make_gridcoder_batch(batch):
         mybatch['yq'].append(torch.from_numpy(np.reshape(batch[task_idx]['yq'], [-1])))
         mybatch['xs'].append(torch.from_numpy(np.reshape(batch[task_idx]['xs'], [k, -1])))
         mybatch['ys'].append(torch.from_numpy(np.reshape(batch[task_idx]['ys'], [k, -1])))
+        mybatch['task_desc'].append(batch[task_idx]['task_desc'])
 
     mybatch['xq'] = torch.stack(mybatch['xq'], dim=0)
     mybatch['yq'] = torch.stack(mybatch['yq'], dim=0)
     mybatch['xs'] = torch.stack(mybatch['xs'], dim=0)
     mybatch['ys'] = torch.stack(mybatch['ys'], dim=0)
+
     return mybatch
