@@ -71,6 +71,16 @@ def generate_all_directed_graphs(num_modules, metadata, max_graphs, use_tqdm=Tru
         progress_bar.close()
     return generated_graphs
 
+def get_unrolled_adj_mat(ts, num_modules):
+    unrolled_adj_mat = []
+    for edge in ts:
+        current_adj_mat = np.zeros((num_modules+1, num_modules+1))
+        current_adj_mat[edge[0]-1, edge[1]-1] = 1.
+
+        unrolled_adj_mat.append(current_adj_mat)
+
+    return np.array(unrolled_adj_mat)
+
 def get_desc(ts, modules):
     desc = ''
     for edge in ts:

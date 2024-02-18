@@ -147,5 +147,6 @@ class ARCGymDataset(Dataset):
         S['xs'], S['ys'] = self.generateTaskSamples(current_graph, self.metadata, self.k)
         S['xq'], S['yq'] = self.generateTaskSamples(current_graph, self.metadata, self.k)
         S['task_desc'] = graphUtils.get_desc(current_graph[1], self.modules)
+        S['unrolled_adj_mat'] = graphUtils.get_unrolled_adj_mat(current_graph[1], len(self.modules))
 
         return S

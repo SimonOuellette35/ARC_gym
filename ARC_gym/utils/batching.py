@@ -53,6 +53,7 @@ def make_mlc_batch(batch, ITEM_token=11, IOSEP_token=12, k=5):
 #  'xq': query example input as a tensor [batch_size x grid_size * grid_size]
 #  'yq': query example output as a tensor [batch_size x grid_size * grid_size]
 #  'task_desc': a string that describes the task [batch_size x string length]
+#  'unrolled_adj_mat': a sequence of adjacency matrices representing each time step in the topological sort.
 def make_gridcoder_batch(batch):
     mybatch = {}
 
@@ -61,6 +62,7 @@ def make_gridcoder_batch(batch):
 
     mybatch['xs'], mybatch['ys'], mybatch['xq'], mybatch['yq'] = [], [], [], []
     mybatch['task_desc'] = []
+    mybatch['unrolled_adj_mat'] = []
 
     for task_idx in range(batch_size):
         mybatch['xq'].append(torch.from_numpy(np.reshape(batch[task_idx]['xq'], [-1])))
@@ -68,6 +70,7 @@ def make_gridcoder_batch(batch):
         mybatch['xs'].append(torch.from_numpy(np.reshape(batch[task_idx]['xs'], [k, -1])))
         mybatch['ys'].append(torch.from_numpy(np.reshape(batch[task_idx]['ys'], [k, -1])))
         mybatch['task_desc'].append(batch[task_idx]['task_desc'])
+        mybatch['unrolled_adj_mat'].append(batch[task_idx]['unrolled_adj_mat'])
 
     mybatch['xq'] = torch.stack(mybatch['xq'], dim=0)
     mybatch['yq'] = torch.stack(mybatch['yq'], dim=0)

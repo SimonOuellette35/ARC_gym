@@ -69,21 +69,22 @@ class MetaDGP:
         )
 
         print("Generating meta-training set tasks...")
-        self.meta_train_tasks = self.generateGraphs(self.meta_train, trainN, max_graphs)
+        self.meta_train_tasks = MetaDGP.generateGraphs(self.meta_train, trainN, max_graphs, self.modules)
 
         print("Generating meta-test set tasks...")
-        self.meta_test_tasks = self.generateGraphs(self.meta_test, testN, max_graphs)
+        self.meta_test_tasks = MetaDGP.generateGraphs(self.meta_test, testN, max_graphs, self.modules)
 
         meta_train_dataset = ARCGymDataset(self.meta_train_tasks, self.modules, self.meta_train, k, self.grid_size, augment_data)
         meta_test_dataset = ARCGymDataset(self.meta_test_tasks, self.modules, self.meta_test, k, self.grid_size, augment_data)
 
         return meta_train_dataset, meta_test_dataset, self.meta_train_tasks, self.meta_test_tasks
 
-    def generateGraphs(self, metadata, N, max_graphs):
+    @staticmethod
+    def generateGraphs(metadata, N, max_graphs, modules):
         G_list = []
 
         count = 0
-        generated_graphs = graphUtils.generate_all_directed_graphs(len(self.modules), metadata, max_graphs)
+        generated_graphs = graphUtils.generate_all_directed_graphs(len(modules), metadata, max_graphs)
         print("==> Length of generated graphs = ", len(generated_graphs))
 
         for graph in generated_graphs:
