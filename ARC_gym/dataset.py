@@ -145,7 +145,7 @@ class ARCGymDataset(Dataset):
 
         S = {}
         S['xs'], S['ys'] = self.generateTaskSamples(current_graph, self.metadata, self.k)
-        S['xq'], S['yq'] = self.generateTaskSamples(current_graph, self.metadata, 1)
+        S['xq'], S['yq'] = self.generateTaskSamples(current_graph, self.metadata, self.k)
         S['task_desc'] = graphUtils.get_desc(current_graph[1], self.modules)
 
         return S
