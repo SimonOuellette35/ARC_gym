@@ -55,14 +55,48 @@ def draw_single_grid(grid):
     plt.axis('off')
     plt.show()
 
-def draw_grids(grid_configs, task_desc):
+def draw_grid_pair(grid1, grid2, title='', grid_size=5):
+
+    plt.figure(figsize=(grid_size * 2, grid_size * 1))
+
+    plt.subplot(1, 2, 1)
+    for y in range(len(grid1)):
+        for x in range(len(grid1[0])):
+            color_idx = int(grid1[y][x])
+            color = dataset.COLOR_MAP[color_idx]
+            rectangle = plt.Rectangle((x, y), 1, 1, fc=color, edgecolor='black')
+            plt.gca().add_patch(rectangle)
+
+    plt.xlim(0, len(grid1[0]))
+    plt.ylim(0, len(grid1))
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    for y in range(len(grid2)):
+        for x in range(len(grid2[0])):
+            color_idx = int(grid2[y][x])
+            color = dataset.COLOR_MAP[color_idx]
+            rectangle = plt.Rectangle((x, y), 1, 1, fc=color, edgecolor='black')
+            plt.gca().add_patch(rectangle)
+
+    plt.xlim(0, len(grid2[0]))
+    plt.ylim(0, len(grid2))
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def draw_grids(grid_configs, task_desc, grid_size=5):
     print("=========================================== Drawing results ============================================")
     print("Task description: ", task_desc)
 
     num_cols = 2
     num_rows = len(grid_configs) // num_cols  # Automatically calculate the number of rows
 
-    plt.figure(figsize=(5 * num_cols, 5 * num_rows))
+    plt.figure(figsize=(grid_size * num_cols, grid_size * num_rows))
 
     for i in range(len(grid_configs)):
         plt.subplot(num_rows, num_cols, i + 1)
