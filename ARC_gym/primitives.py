@@ -3,18 +3,41 @@ from functools import partial
 from ARC_gym.dataset import COLOR_MAP
 
 
+def get_shortcuts():
+    shortcuts = {
+        'move_right/move_down/move_left': 'move_down',
+        'move_right/move_up/move_left': 'move_up',
+        'move_left/move_down/move_right': 'move_down',
+        'move_left/move_up/move_right': 'move_up',
+        'move_up/move_right/move_down': 'move_right',
+        'move_up/move_left/move_down': 'move_left',
+        'move_down/move_right/move_up': 'move_right',
+        'move_down/move_left/move_up': 'move_left',
+        'flip_horizontal/flip_vertical': 'rotate_180_degrees',
+        'flip_vertical/flip_horizontal': 'rotate_180_degrees',
+    }
+
+    return shortcuts
+
+def fetch_prim_by_name(name):
+    for prim_set in get_total_set():
+        if prim_set[1] == name:
+            return prim_set[0]
+
+    print("ERROR ==> Couldn't find primitive ", name)
+
 def get_total_set():
     return [
-        (copy_right, 'copy_right'),
-        (copy_left, 'copy_left'),
         (copy_up, 'copy_up'),
         (copy_down, 'copy_down'),
         (move_right, 'move_right'),
         (move_left, 'move_left'),
+        (copy_right, 'copy_right'),
         (move_up, 'move_up'),
         (move_down, 'move_down'),
         (rotate_90_degrees, 'rotate_90_degrees'),
         (rotate_180_degrees, 'rotate_180_degrees'),
+        (copy_left, 'copy_left'),
         (rotate_270_degrees, 'rotate_270_degrees'),
         (flip_vertical, 'flip_vertical'),
         (flip_horizontal, 'flip_horizontal'),
