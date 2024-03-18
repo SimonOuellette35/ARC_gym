@@ -2,6 +2,8 @@ from torch.utils.data import Dataset
 import ARC_gym.utils.graphs as graphUtils
 import re
 import numpy as np
+import os,json
+import random
 
 # Define a color map
 COLOR_MAP = {
@@ -16,6 +18,93 @@ COLOR_MAP = {
     8: 'aquamarine',
     9: 'white'
 }
+
+class ARCGymPatchesDataset(Dataset):
+
+    def __init__(self, task_list, modules, metadata, k=5, grid_dim=5, base_dir="ARC/data/training", augment_data=True):
+        self.task_list = task_list
+        self.k = k
+        self.metadata = metadata
+        self.modules = modules
+        self.base_dir = base_dir
+        self.grid_dim = grid_dim
+        self.arc_files = os.listdir(base_dir)
+        self.augment_data = augment_data
+        self.all_grids = []
+
+        self.load_grids()
+
+    def arc_to_numpy(self, fpath):
+        with open(fpath) as f:
+            content = json.load(f)
+
+        grids = []
+        for g in content["train"]:
+            grids.append(np.array(g["input"], dtype="int8"))
+            grids.append(np.array(g["output"], dtype="int8"))
+        for g in content["test"]:
+            grids.append(np.array(g["input"], dtype="int8"))
+        return grids
+
+    def load_grids(self):
+        for fname in self.arc_files:
+            fpath = os.path.join(self.base_dir, fname)
+            self.all_grids.extend(self.arc_to_numpy(fpath))
+
+    def augment(self, X):
+        num_rotations = np.random.choice(np.arange(4))
+        for _ in range(num_rotations):
+            X = np.rot90(X)
+
+        return X
+
+    def sampleGridPatch(self):
+
+        min_side = 0
+        while min_side < self.grid_dim + 1:
+            i = random.randint(0, len(self.all_grids) - 1)
+            grid = self.all_grids[i]
+            min_side = min(grid.shape[0], grid.shape[1])
+        i = random.randint(0, grid.shape[0] - self.grid_dim - 1)
+        j = random.randint(0, grid.shape[1] - self.grid_dim - 1)
+        grid_sample = grid[i:i + self.grid_dim, j:j + self.grid_dim]
+
+        return grid_sample
+
+
+    def generateTaskSamples(self, G, k=3):
+
+        data_x = []
+        data_y = []
+        for _ in range(k):
+            # generate X
+            X = self.sampleGridPatch()
+
+            if self.augment_data:
+                X = self.augment(X)
+
+            # execute computational graph to obtain Y
+            Y = graphUtils.executeCompGraph(G, X, self.modules)
+
+            data_x.append(X)
+            data_y.append(Y)
+
+        return np.copy(data_x), np.copy(data_y)
+
+    def __len__(self):
+        return len(self.task_list)
+
+    def __getitem__(self, idx):
+        current_graph = self.task_list[idx]
+
+        S = {}
+        S['xs'], S['ys'] = self.generateTaskSamples(current_graph, self.k)
+        S['xq'], S['yq'] = self.generateTaskSamples(current_graph, self.k)
+        S['task_desc'] = graphUtils.get_desc(current_graph[1], self.modules)
+        S['unrolled_adj_mat'] = graphUtils.get_unrolled_adj_mat(current_graph[1], len(self.modules))
+
+        return S
+
 
 class ARCGymDataset(Dataset):
 
