@@ -6,7 +6,62 @@ import copy
 from tqdm import tqdm
 
 
-def generate_all_directed_graphs(num_modules, metadata, max_graphs, use_tqdm=True, shuffle=True):
+def generate_all_directed_graphs(num_modules, metadata, max_graphs, use_tqdm=True, shuffle=True, branching_factor=1):
+
+    generated_graphs = []
+    nodes = np.arange(1, num_modules+1)
+
+    if use_tqdm:
+        progress_bar = tqdm(total=max_graphs)
+
+    for _ in range(max_graphs):
+        G = nx.DiGraph()
+
+        num_nodes = np.random.choice(np.arange(metadata['num_nodes'][0], metadata['num_nodes'][1]+1))
+        edges = []
+        for node_idx in range(num_nodes):
+            edge = []
+
+            # from edge
+            if node_idx == 0:
+                edge.append(1)
+            else:
+                edge.append(edges[-1][1])
+
+            # to edge
+            if node_idx == num_nodes-1:
+                edge.append(num_modules)
+            else:
+                ok = False
+                while not ok:
+                    rnd_node = np.random.choice(np.arange(2, num_modules))
+                    ok = True
+
+                    for prev_edge in edges:
+                        if rnd_node in prev_edge:
+                            ok = False
+                            break
+
+                edge.append(rnd_node)
+
+            edges.append(edge)
+
+        G.add_edges_from(edges)
+        generated_graphs.append(copy.deepcopy(G))
+
+        if use_tqdm:
+            progress_bar.update(1)
+
+    if shuffle:
+        random.shuffle(generated_graphs)
+    if use_tqdm:
+        progress_bar.close()
+
+    return generated_graphs
+
+
+# TODO: add branching factor to the graph metadata
+def generate_all_directed_graphs_full(num_modules, metadata, max_graphs, use_tqdm=True, shuffle=True, branching_factor=1):
     generated_graphs = []
     counter = 0
     nodes = np.arange(1, num_modules+1)
@@ -51,6 +106,10 @@ def generate_all_directed_graphs(num_modules, metadata, max_graphs, use_tqdm=Tru
 
                     # Check if the graph is weakly connected: don't allow disconnected subgraphs
                     if not nx.is_connected(G.to_undirected()):
+                        continue
+
+                    # Check for maximum branching factor
+                    if any(G.out_degree(node) > branching_factor for node in G):
                         continue
 
                     generated_graphs.append(copy.deepcopy(G))
@@ -280,3 +339,6 @@ def generate_topological_sorts(graph):
         toposort_variants = np.concatenate((toposort_variants, tmp_variants))
 
     return toposort_variants
+
+def test():
+    print("It works.")

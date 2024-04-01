@@ -1,9 +1,12 @@
 from torch.utils.data import Dataset
 import ARC_gym.utils.graphs as graphUtils
+import ARC_gym.utils.tokenization as tok
 import re
 import numpy as np
 import os,json
 import random
+
+from ARC_gym.Hodel_primitives import *
 
 # Define a color map
 COLOR_MAP = {
@@ -19,7 +22,177 @@ COLOR_MAP = {
     9: 'white'
 }
 
+class ARCGymVariableDataset(Dataset):
+    '''
+    This builds on top of ARCGymPatchesDataset, but instead of assuming fixed square grids, we allowed for variable
+    size, non-square grids. This means that tokenization must be a bit more sophisticated.
+    '''
+    def __init__(self, primitives, metadata, k=10, init_grid_shape=[10, 10], base_dir="ARC/data/training",):
+        self.metadata = metadata
+        self.primitives = dict(primitives)
+        self.k = k
+        self.transformations_f = {k: eval(v) for k, v in self.primitives.items()}
+        self.tf_list = sorted(self.primitives.keys())
+        self.init_grid_shape = init_grid_shape
+        self.base_dir = base_dir
+        self.arc_files = os.listdir(base_dir)
+        self.all_grids = []
+
+        self.load_grids()
+
+    def arc_to_numpy(self, fpath):
+        with open(fpath) as f:
+            content = json.load(f)
+
+        grids = []
+        for g in content["train"]:
+            grids.append(np.array(g["input"], dtype="int8"))
+            grids.append(np.array(g["output"], dtype="int8"))
+        for g in content["test"]:
+            grids.append(np.array(g["input"], dtype="int8"))
+        return grids
+
+    def load_grids(self):
+        for fname in self.arc_files:
+            fpath = os.path.join(self.base_dir, fname)
+            self.all_grids.extend(self.arc_to_numpy(fpath))
+
+    def augment(self, X):
+        num_rotations = np.random.choice(np.arange(4))
+        for _ in range(num_rotations):
+            X = np.rot90(X)
+
+        return X
+
+    def sampleGridPatch(self, k):
+
+        output = []
+
+        for _ in range(k):
+            width = 0
+            height = 0
+            while width <= self.init_grid_shape[0] or height <= self.init_grid_shape[1]:
+                i = random.randint(0, len(self.all_grids) - 1)
+                grid = self.all_grids[i]
+                width = grid.shape[0]
+                height = grid.shape[1]
+
+            i = random.randint(0, grid.shape[0] - self.init_grid_shape[0] - 1)
+            j = random.randint(0, grid.shape[1] - self.init_grid_shape[1] - 1)
+
+            grid_sample = grid[i:i + self.init_grid_shape[0], j:j + self.init_grid_shape[1]]
+
+            output.append(tuple(tuple(inner) for inner in grid_sample))
+
+        return output
+
+    def sample_transform(self):
+
+        def most_identity(a_list, b_list):
+            count_identical = 0
+            for idx in range(len(a_list)):
+                if a_list[idx] == b_list[idx]:
+                    count_identical += 1
+
+            if count_identical > len(a_list) / 2:
+                return True
+            else:
+                return False
+
+        def most_empty(a_list):
+            count_empty = 0
+
+            for a in a_list:
+                if palette(a) == {0}:
+                    count_empty += 1
+
+            if count_empty > len(a_list) / 2:
+                return True
+            else:
+                return False
+
+        def all_valid_shape(a_list):
+            for a in a_list:
+                if len(a) > 30 or len(a) == 0 or len(a[0]) > 30 or len(a[0]) == 0:
+                    return False
+
+            return True
+
+        def all_valid_colors(a_list):
+            for a in a_list:
+                if not palette(a).issubset(set(range(10))):
+                    return False
+
+            return True
+
+        max_nt = self.metadata['num_nodes'][1]
+        min_nt = self.metadata['num_nodes'][0]
+        n = random.randint(min_nt, max_nt)
+
+        gi = self.sampleGridPatch(self.k)
+
+        go = []
+        for g in gi:
+            tmp_out = identity(g)
+            go.append(tmp_out)
+
+        prog = 'identity'
+        desc = ''
+        tfs = []
+        for _ in range(n):
+            valid = False
+            while not valid:
+                valid = True
+                tf = random.choice(self.tf_list)
+
+                go2 = []
+                for g in go:
+                    tmp_out = self.transformations_f[tf](g)
+                    go2.append(tmp_out)
+
+                if most_identity(go, go2):
+                    valid = False
+                    continue
+
+                if most_empty(go2):
+                    valid = False
+                    continue
+
+                if not all_valid_shape(go2):
+                    valid = False
+                    continue
+
+                if not all_valid_colors(go2):
+                    valid = False
+                    continue
+
+            prog = f'compose({self.primitives[tf]}, {prog})'
+            desc = f'{tf}({desc})'
+            go = go2
+            tfs.append(tf)
+
+        x = tok.tokenize_grid_batch(gi)
+        y = tok.tokenize_grid_batch(go)
+
+        return x, y, desc
+
+    def __len__(self):
+        return 1000
+
+    def __getitem__(self, idx):
+        S = {}
+        S['xs'], S['ys'], S['task_desc'] = self.sample_transform()
+
+        # TODO: BUG: this is wrong, the query set must use the same program as the support set!
+        S['xq'], S['yq'], _ = self.sample_transform()
+
+        return S
+
 class ARCGymPatchesDataset(Dataset):
+    '''
+    This is like ARCGymDataset, but instead of randomly pixelized grids, it tries to produce more interesting &
+    realistic grids by sampling square patches of the requested dimension from the ARC training set.
+    '''
 
     def __init__(self, task_list, modules, metadata, k=5, grid_dim=5, base_dir="ARC/data/training", augment_data=True):
         self.task_list = task_list
@@ -101,7 +274,6 @@ class ARCGymPatchesDataset(Dataset):
         S['xs'], S['ys'] = self.generateTaskSamples(current_graph, self.k)
         S['xq'], S['yq'] = self.generateTaskSamples(current_graph, self.k)
         S['task_desc'] = graphUtils.get_desc(current_graph[1], self.modules)
-        S['unrolled_adj_mat'] = graphUtils.get_unrolled_adj_mat(current_graph[1], len(self.modules))
 
         return S
 
@@ -236,6 +408,5 @@ class ARCGymDataset(Dataset):
         S['xs'], S['ys'] = self.generateTaskSamples(current_graph, self.metadata, self.k)
         S['xq'], S['yq'] = self.generateTaskSamples(current_graph, self.metadata, self.k)
         S['task_desc'] = graphUtils.get_desc(current_graph[1], self.modules)
-        S['unrolled_adj_mat'] = graphUtils.get_unrolled_adj_mat(current_graph[1], len(self.modules))
 
         return S

@@ -69,8 +69,12 @@ def make_gridcoder_batch(batch):
         mybatch['yq'].append(torch.from_numpy(np.reshape(batch[task_idx]['yq'], [-1])))
         mybatch['xs'].append(torch.from_numpy(np.reshape(batch[task_idx]['xs'], [k, -1])))
         mybatch['ys'].append(torch.from_numpy(np.reshape(batch[task_idx]['ys'], [k, -1])))
-        mybatch['task_desc'].append(batch[task_idx]['task_desc'])
-        mybatch['unrolled_adj_mat'].append(batch[task_idx]['unrolled_adj_mat'])
+
+        if 'task_desc' in batch[task_idx]:
+            mybatch['task_desc'].append(batch[task_idx]['task_desc'])
+
+        if 'unrolled_adj_mat' in batch[task_idx]:
+            mybatch['unrolled_adj_mat'].append(batch[task_idx]['unrolled_adj_mat'])
 
     mybatch['xq'] = torch.stack(mybatch['xq'], dim=0)
     mybatch['yq'] = torch.stack(mybatch['yq'], dim=0)

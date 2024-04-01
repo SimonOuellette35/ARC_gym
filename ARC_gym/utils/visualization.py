@@ -25,7 +25,7 @@ def draw_dataset(data_loader, num_examples, k, grid_size=5):
             draw_grids(task_grids, batch_desc[task_idx])
 
 
-def draw_batch(data, k, grid_size=5):
+def draw_batch(data, k, grid_shape=[5, 5]):
 
     batch_xs = data['xs']
     batch_ys = data['ys']
@@ -35,8 +35,8 @@ def draw_batch(data, k, grid_size=5):
 
         task_grids = []
         for k_idx in range(k):              # Number of support set examples to show in one figure
-            task_grids.append(torch.reshape(batch_xs[batch_idx][k_idx], [grid_size, grid_size]).cpu().data.numpy())
-            task_grids.append(torch.reshape(batch_ys[batch_idx][k_idx], [grid_size, grid_size]).cpu().data.numpy())
+            task_grids.append(torch.reshape(batch_xs[batch_idx][k_idx], [grid_shape[0], grid_shape[1]]).cpu().data.numpy())
+            task_grids.append(torch.reshape(batch_ys[batch_idx][k_idx], [grid_shape[0], grid_shape[1]]).cpu().data.numpy())
 
         draw_grids(task_grids, batch_desc)
 
