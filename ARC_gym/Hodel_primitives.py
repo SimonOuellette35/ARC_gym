@@ -65,6 +65,46 @@ THREE_BY_THREE = (3, 3)
 def execute(func_str, grid):
     return eval(func_str)(grid)
 
+def is_rotation(func_str):
+    if func_str.startswith("Rotate"):
+        return True
+    else:
+        return False
+
+def is_mirroring(func_str):
+    if func_str.endswith("Mirror"):
+        return True
+    else:
+        return False
+
+def is_rep(func_str):
+    if func_str.startswith("Rep"):
+        return True
+    else:
+        return False
+
+def fetch_prim_by_name(name):
+    for prim_set in get_total_set():
+        if prim_set[0] == name:
+            return prim_set[1]
+
+    print("ERROR ==> Couldn't find primitive ", name)
+
+def get_shortcuts():
+    shortcuts = {
+        'TopHalf/LeftHalf': 'FirstQuadrant',
+        'LeftHalf/TopHalf': 'FirstQuadrant',
+        'TopHalf/RightHalf': 'SecondQuadrant',
+        'RightHalf/TopHalf': 'SecondQuadrant',
+        'BottomHalf/LeftHalf': 'ThirdQuadrant',
+        'LeftHalf/BottomHalf': 'ThirdQuadrant',
+        'BottomHalf/RightHalf': 'FourthQuadrant',
+        'RightHalf/BottomHalf': 'FourthQuadrant',
+        'VerticallyMirror/HorizontallyMirror': 'RotateHalf',
+        'HorizontallyMirror/VerticallyMirror': 'RotateHalf'
+    }
+
+    return shortcuts
 def get_total_set():
     transformations = [
         ["Compress", "compress"],
