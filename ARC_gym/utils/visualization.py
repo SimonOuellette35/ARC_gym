@@ -88,6 +88,52 @@ def draw_grid_pair(grid1, grid2, title='', grid_size=5):
     plt.tight_layout()
     plt.show()
 
+def draw_grid_triple(grid1, grid2, grid3, title='', grid_size=5):
+
+    plt.figure(figsize=(grid_size * 3, grid_size * 1))
+
+    plt.subplot(1, 3, 1)
+    for y in range(len(grid1)):
+        for x in range(len(grid1[0])):
+            color_idx = int(grid1[y][x])
+            color = dataset.COLOR_MAP[color_idx]
+            rectangle = plt.Rectangle((x, y), 1, 1, fc=color, edgecolor='black')
+            plt.gca().add_patch(rectangle)
+
+    plt.xlim(0, len(grid1[0]))
+    plt.ylim(0, len(grid1))
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.axis('off')
+
+    plt.subplot(1, 3, 2)
+    for y in range(len(grid2)):
+        for x in range(len(grid2[0])):
+            color_idx = int(grid2[y][x])
+            color = dataset.COLOR_MAP[color_idx]
+            rectangle = plt.Rectangle((x, y), 1, 1, fc=color, edgecolor='black')
+            plt.gca().add_patch(rectangle)
+
+    plt.xlim(0, len(grid2[0]))
+    plt.ylim(0, len(grid2))
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.axis('off')
+
+    plt.subplot(1, 3, 3)
+    for y in range(len(grid3)):
+        for x in range(len(grid3[0])):
+            color_idx = int(grid3[y][x])
+            color = dataset.COLOR_MAP[color_idx]
+            rectangle = plt.Rectangle((x, y), 1, 1, fc=color, edgecolor='black')
+            plt.gca().add_patch(rectangle)
+
+    plt.xlim(0, len(grid3[0]))
+    plt.ylim(0, len(grid3))
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
 
 def draw_grids(grid_configs, task_desc, grid_size=5):
     print("=========================================== Drawing results ============================================")
