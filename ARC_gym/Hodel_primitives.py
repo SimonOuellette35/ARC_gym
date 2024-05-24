@@ -4,8 +4,10 @@
 from utils.heap_search_type_system import INT, Arrow, List
 
 from typing import (
-    Tuple,
+    Tuple
 )
+
+Grid = Tuple[Tuple[int]]
 
 ZERO = 0
 ONE = 1
@@ -1170,11 +1172,7 @@ def fill(grid, value, patch):
             grid_filled[i][j] = value
     return tuple(tuple(row) for row in grid_filled)
 
-
-def paint(
-    grid: Grid,
-    obj: Object
-) -> Grid:
+def paint(grid, obj):
     """ paint object to grid """
     h, w = len(grid), len(grid[0])
     grid_painted = list(list(row) for row in grid)
@@ -1183,12 +1181,7 @@ def paint(
             grid_painted[i][j] = value
     return tuple(tuple(row) for row in grid_painted)
 
-
-def underfill(
-    grid: Grid,
-    value: Integer,
-    patch: Patch
-) -> Grid:
+def underfill(grid, value, patch):
     """ fill value at indices that are background """
     h, w = len(grid), len(grid[0])
     bg = mostcolor(grid)
@@ -1199,11 +1192,7 @@ def underfill(
                 grid_filled[i][j] = value
     return tuple(tuple(row) for row in grid_filled)
 
-
-def underpaint(
-    grid: Grid,
-    obj: Object
-) -> Grid:
+def underpaint(grid, obj):
     """ paint object to grid where there is background """
     h, w = len(grid), len(grid[0])
     bg = mostcolor(grid)
@@ -1214,11 +1203,7 @@ def underpaint(
                 grid_painted[i][j] = value
     return tuple(tuple(row) for row in grid_painted)
 
-
-def hupscale(
-    grid: Grid,
-    factor: Integer
-) -> Grid:
+def hupscale(grid, factor):
     """ upscale grid horizontally """
     upscaled_grid = tuple()
     for row in grid:
@@ -1228,22 +1213,14 @@ def hupscale(
         upscaled_grid = upscaled_grid + (upscaled_row,)
     return upscaled_grid
 
-
-def vupscale(
-    grid: Grid,
-    factor: Integer
-) -> Grid:
+def vupscale(grid, factor):
     """ upscale grid vertically """
     upscaled_grid = tuple()
     for row in grid:
         upscaled_grid = upscaled_grid + tuple(row for num in range(factor))
     return upscaled_grid
 
-
-def upscale(
-    element: Element,
-    factor: Integer
-) -> Element:
+def upscale(element, factor):
     """ upscale object or grid """
     if isinstance(element, tuple):
         upscaled_grid = tuple()
@@ -1266,11 +1243,7 @@ def upscale(
                     upscaled_obj.add((value, (i * factor + io, j * factor + jo)))
         return shift(frozenset(upscaled_obj), (di_inv, dj_inv))
 
-
-def downscale(
-    grid: Grid,
-    factor: Integer
-) -> Grid:
+def downscale(grid, factor):
     """ downscale grid """
     h, w = len(grid), len(grid[0])
     downscaled_grid = tuple()
@@ -1287,56 +1260,32 @@ def downscale(
             downscaled_grid2 = downscaled_grid2 + (downscaled_grid[i],)
     return downscaled_grid2
 
-
-def hconcat(
-    a: Grid,
-    b: Grid
-) -> Grid:
+def hconcat(a, b):
     """ concatenate two grids horizontally """
     return tuple(i + j for i, j in zip(a, b))
 
-
-def vconcat(
-    a: Grid,
-    b: Grid
-) -> Grid:
+def vconcat(a, b):
     """ concatenate two grids vertically """
     return a + b
 
-
-def subgrid(
-    patch: Patch,
-    grid: Grid
-) -> Grid:
+def subgrid(patch, grid):
     """ smallest subgrid containing object """
     return crop(grid, ulcorner(patch), shape(patch))
 
-
-def hsplit(
-    grid: Grid,
-    n: Integer
-) -> Tuple:
+def hsplit(grid, n):
     """ split grid horizontally """
     h, w = len(grid), len(grid[0]) // n
     offset = len(grid[0]) % n != 0
     return tuple(crop(grid, (0, w * i + i * offset), (h, w)) for i in range(n))
 
-
-def vsplit(
-    grid: Grid,
-    n: Integer
-) -> Tuple:
+def vsplit(grid, n):
     """ split grid vertically """
     h, w = len(grid) // n, len(grid[0])
     offset = len(grid) % n != 0
     return tuple(crop(grid, (h * i + i * offset, 0), (h, w)) for i in range(n))
 
-
-def cellwise(
-    a: Grid,
-    b: Grid,
-    fallback: Integer
-) -> Grid:
+# TODO: is this redundant with the cellwise AND/OR/XOR/Difference primitives?
+def cellwise(a, b, fallback):
     """ cellwise match of two grids """
     h, w = len(a), len(a[0])
     resulting_grid = tuple()
@@ -1349,36 +1298,19 @@ def cellwise(
         resulting_grid = resulting_grid + (row, )
     return resulting_grid
 
-
-def replace(
-    grid: Grid,
-    replacee: Integer,
-    replacer: Integer
-) -> Grid:
+def replace(grid, replacee, replacer):
     """ color substitution """
     return tuple(tuple(replacer if v == replacee else v for v in r) for r in grid)
 
-
-def switch(
-    grid: Grid,
-    a: Integer,
-    b: Integer
-) -> Grid:
+def switch(grid, a, b):
     """ color switching """
     return tuple(tuple(v if (v != a and v != b) else {a: b, b: a}[v] for v in r) for r in grid)
 
-
-def center(
-    patch: Patch
-) -> IntegerTuple:
+def center(patch):
     """ center of the patch """
     return (uppermost(patch) + height(patch) // 2, leftmost(patch) + width(patch) // 2)
 
-
-def position(
-    a: Patch,
-    b: Patch
-) -> IntegerTuple:
+def position(a, b):
     """ relative position between two patches """
     ia, ja = center(toindices(a))
     ib, jb = center(toindices(b))
@@ -1391,11 +1323,7 @@ def position(
     elif ia > ib:
         return (-1, 1 if ja < jb else -1)
 
-
-def index(
-    grid: Grid,
-    loc: IntegerTuple
-) -> Integer:
+def index(grid, loc):
     """ color at location """
     i, j = loc
     h, w = len(grid), len(grid[0])
@@ -1403,26 +1331,15 @@ def index(
         return None
     return grid[loc[0]][loc[1]]
 
-
-def canvas(
-    value: Integer,
-    dimensions: IntegerTuple
-) -> Grid:
+def canvas(value, dimensions):
     """ grid construction """
     return tuple(tuple(value for j in range(dimensions[1])) for i in range(dimensions[0]))
 
-
-def corners(
-    patch: Patch
-) -> Indices:
+def corners(patch):
     """ indices of corners """
     return frozenset({ulcorner(patch), urcorner(patch), llcorner(patch), lrcorner(patch)})
 
-
-def connect(
-    a: IntegerTuple,
-    b: IntegerTuple
-) -> Indices:
+def connect(a, b):
     """ line between two points """
     ai, aj = a
     bi, bj = b
@@ -1440,76 +1357,43 @@ def connect(
         return frozenset((i, j) for i, j in zip(range(si, ei), range(ej - 1, sj - 1, -1)))
     return frozenset()
 
-
-def cover(
-    grid: Grid,
-    patch: Patch
-) -> Grid:
+def cover(grid, patch):
     """ remove object from grid """
     return fill(grid, mostcolor(grid), toindices(patch))
 
-
-def trim(
-    grid: Grid
-) -> Grid:
+def trim(grid):
     """ trim border of grid """
     return tuple(r[1:-1] for r in grid[1:-1])
 
-
-def move(
-    grid: Grid,
-    obj: Object,
-    offset: IntegerTuple
-) -> Grid:
+def move(grid, obj, offset):
     """ move object on grid """
     return paint(cover(grid, obj), shift(obj, offset))
 
-
-def tophalf(
-    grid: Grid
-) -> Grid:
+def tophalf(grid):
     """ upper half of grid """
     return grid[:len(grid) // 2]
 
-
-def bottomhalf(
-    grid: Grid
-) -> Grid:
+def bottomhalf(grid):
     """ lower half of grid """
     return grid[len(grid) // 2 + len(grid) % 2:]
 
-
-def lefthalf(
-    grid: Grid
-) -> Grid:
+def lefthalf(grid):
     """ left half of grid """
     return rot270(tophalf(rot90(grid)))
 
-
-def righthalf(
-    grid: Grid
-) -> Grid:
+def righthalf(grid):
     """ right half of grid """
     return rot270(bottomhalf(rot90(grid)))
 
-
-def vfrontier(
-    location: IntegerTuple
-) -> Indices:
+def vfrontier(location):
     """ vertical frontier """
     return frozenset((i, location[1]) for i in range(30))
 
-
-def hfrontier(
-    location: IntegerTuple
-) -> Indices:
+def hfrontier(location):
     """ horizontal frontier """
     return frozenset((location[0], j) for j in range(30))
 
-
-def backdrop(
-    patch: Patch
-) -> Indices:
+def backdrop(patch):
     """ indices in bounding box of patch """
     if len(patch) == 0:
         return frozenset({})
@@ -1518,20 +1402,13 @@ def backdrop(
     ei, ej = lrcorner(patch)
     return frozenset((i, j) for i in range(si, ei + 1) for j in range(sj, ej + 1))
 
-
-def delta(
-    patch: Patch
-) -> Indices:
+def delta(patch):
     """ indices in bounding box but not part of patch """
     if len(patch) == 0:
         return frozenset({})
     return backdrop(patch) - toindices(patch)
 
-
-def gravitate(
-    source: Patch,
-    destination: Patch
-) -> IntegerTuple:
+def gravitate(source, destination):
     """ direction to move source until adjacent to destination """
     source_i, source_j = center(source)
     destination_i, destination_j = center(destination)
@@ -1551,10 +1428,7 @@ def gravitate(
         source = shift(source, direction)
     return (gravitation_i - i, gravitation_j - j)
 
-
-def inbox(
-    patch: Patch
-) -> Indices:
+def inbox(patch):
     """ inbox for patch """
     ai, aj = uppermost(patch) + 1, leftmost(patch) + 1
     bi, bj = lowermost(patch) - 1, rightmost(patch) - 1
@@ -1564,10 +1438,7 @@ def inbox(
     hlines = {(si, j) for j in range(sj, ej + 1)} | {(ei, j) for j in range(sj, ej + 1)}
     return frozenset(vlines | hlines)
 
-
-def outbox(
-    patch: Patch
-) -> Indices:
+def outbox(patch):
     """ outbox for patch """
     ai, aj = uppermost(patch) - 1, leftmost(patch) - 1
     bi, bj = lowermost(patch) + 1, rightmost(patch) + 1
@@ -1577,10 +1448,7 @@ def outbox(
     hlines = {(si, j) for j in range(sj, ej + 1)} | {(ei, j) for j in range(sj, ej + 1)}
     return frozenset(vlines | hlines)
 
-
-def box(
-    patch: Patch
-) -> Indices:
+def box(patch):
     """ outline of patch """
     if len(patch) == 0:
         return patch
@@ -1592,19 +1460,11 @@ def box(
     hlines = {(si, j) for j in range(sj, ej + 1)} | {(ei, j) for j in range(sj, ej + 1)}
     return frozenset(vlines | hlines)
 
-
-def shoot(
-    start: IntegerTuple,
-    direction: IntegerTuple
-) -> Indices:
+def shoot(start, direction):
     """ line from starting point and direction """
     return connect(start, (start[0] + 42 * direction[0], start[1] + 42 * direction[1]))
 
-
-def occurrences(
-    grid: Grid,
-    obj: Object
-) -> Indices:
+def occurrences(grid, obj):
     """ locations of occurrences of object in grid """
     occurrences = set()
     normed = normalize(obj)
@@ -1624,10 +1484,7 @@ def occurrences(
                 occurrences.add((i, j))
     return frozenset(occurrences)
 
-
-def frontiers(
-    grid: Grid
-) -> Objects:
+def frontiers(grid):
     """ set of frontiers """
     h, w = len(grid), len(grid[0])
     row_indices = tuple(i for i, r in enumerate(grid) if len(set(r)) == 1)
@@ -1636,19 +1493,13 @@ def frontiers(
     vfrontiers = frozenset({frozenset({(grid[i][j], (i, j)) for i in range(h)}) for j in column_indices})
     return hfrontiers | vfrontiers
 
-
-def compress(
-    grid: Grid
-) -> Grid:
+def compress(grid):
     """ removes frontiers from grid """
     ri = tuple(i for i, r in enumerate(grid) if len(set(r)) == 1)
     ci = tuple(j for j, c in enumerate(dmirror(grid)) if len(set(c)) == 1)
     return tuple(tuple(v for j, v in enumerate(r) if j not in ci) for i, r in enumerate(grid) if i not in ri)
 
-
-def hperiod(
-    obj: Object
-) -> Integer:
+def hperiod(obj):
     """ horizontal periodicity """
     normalized = normalize(obj)
     w = width(normalized)
@@ -1659,10 +1510,7 @@ def hperiod(
             return p
     return w
 
-
-def vperiod(
-    obj: Object
-) -> Integer:
+def vperiod(obj):
     """ vertical periodicity """
     normalized = normalize(obj)
     h = height(normalized)
@@ -1855,8 +1703,6 @@ semantics = {
     'bottomhalf': lambda g: bottomhalf(g),
     'lefthalf': lambda g: lefthalf(g),
     'righthalf': lambda g: righthalf(g),
-    'hupscale': lambda g: lambda h: hupscale(g, h),
-    'vupscale': lambda g: lambda h: vupscale(g, h),
     '0': 0,
     '1': 1,
     '2': 2,
@@ -1867,6 +1713,123 @@ semantics = {
     '7': 7,
     '8': 8,
     '9': 9
+}
+
+primitive_types = {
+    'cellwiseOR': Arrow(Grid, Arrow(Grid, Grid)),
+    'cellwiseXOR': Arrow(Grid, Arrow(Grid, Grid)),
+    'cellwiseAND': Arrow(Grid, Arrow(Grid, Grid)),
+    'cellwiseDifference': Arrow(Grid, Arrow(Grid, Grid)),
+    'set_fg_color': Arrow(Grid, Arrow(INT, Grid)),
+    'color_swap': Arrow(Grid, Arrow(INT, Arrow(INT, Grid))),
+    'duo_wheel': Arrow(Grid, Grid),
+    'quad_wheel': Arrow(Grid, Grid),
+    'clear_single_colors': Arrow(Grid, Grid),
+    'clear_double_colors': Arrow(Grid, Grid),
+    'clear_triple_colors': Arrow(Grid, Grid),
+    'drag_down_underpaint': Arrow(Grid, Grid),
+    'drag_down_paint': Arrow(Grid, Grid),
+    'drag_left_underpaint': Arrow(Grid, Grid),
+    'drag_left_paint': Arrow(Grid, Grid),
+    'drag_up_underpaint': Arrow(Grid, Grid),
+    'drag_up_paint': Arrow(Grid, Grid),
+    'drag_right_underpaint': Arrow(Grid, Grid),
+    'drag_right_paint': Arrow(Grid, Grid),
+    'drag_diagonally_underpaint': Arrow(Grid, Grid),
+    'drag_diagonally_paint': Arrow(Grid, Grid),
+    'drag_counterdiagonally_underpaint': Arrow(Grid, Grid),
+    'drag_counterdiagonally_paint': Arrow(Grid, Grid),
+    'extend_by_one': Arrow(Grid, Grid),
+    'extend_by_two': Arrow(Grid, Grid),
+    'insert_top_row': Arrow(Grid, Grid),
+    'insert_bottom_row': Arrow(Grid, Grid),
+    'insert_left_col': Arrow(Grid, Grid),
+    'insert_right_col': Arrow(Grid, Grid),
+    'stack_rows_horizontally': Arrow(Grid, Grid),
+    'stack_rows_vertically': Arrow(Grid, Grid),
+    'stack_rows_horizontally_compress': Arrow(Grid, Grid),
+    'stack_columns_vertically_compress': Arrow(Grid, Grid),
+    'insert_cross': Arrow(Grid, Grid),
+    'insert_large_cross': Arrow(Grid, Grid),
+    'symmetrize_left_around_vertical': Arrow(Grid, Grid),
+    'symmetrize_right_around_vertical': Arrow(Grid, Grid),
+    'symmetrize_top_around_horizontal': Arrow(Grid, Grid),
+    'symmetrize_bottom_around_horizontal': Arrow(Grid, Grid),
+    'symmetrize_quad': Arrow(Grid, Grid),
+    'keep_only_diagonal': Arrow(Grid, Grid),
+    'shear_rows_left': Arrow(Grid, Grid),
+    'shear_rows_right': Arrow(Grid, Grid),
+    'shear_cols_down': Arrow(Grid, Grid),
+    'shear_cols_up': Arrow(Grid, Grid),
+    'upscale_horizontal_by_two': Arrow(Grid, Grid),
+    'upscale_vertical_by_two': Arrow(Grid, Grid),
+    'upscale_horizontal_by_three': Arrow(Grid, Grid),
+    'upscale_vertical_by_three': Arrow(Grid, Grid),
+    'upscale_by_two': Arrow(Grid, Grid),
+    'upscale_by_three': Arrow(Grid, Grid),
+    'clear_outline': Arrow(Grid, Grid),
+    'clear_all_but_outline': Arrow(Grid, Grid),
+    'clear_top_row': Arrow(Grid, Grid),
+    'clear_bottom_row': Arrow(Grid, Grid),
+    'clear_left_column': Arrow(Grid, Grid),
+    'clear_right_column': Arrow(Grid, Grid),
+    'clear_diagonal': Arrow(Grid, Grid),
+    'clear_counterdiagonal': Arrow(Grid, Grid),
+    'rep_first_row': Arrow(Grid, Grid),
+    'rep_last_row': Arrow(Grid, Grid),
+    'rep_first_col': Arrow(Grid, Grid),
+    'rep_last_col': Arrow(Grid, Grid),
+    'remove_top_row': Arrow(Grid, Grid),
+    'remove_bottom_row': Arrow(Grid, Grid),
+    'remove_left_column': Arrow(Grid, Grid),
+    'remove_right_column': Arrow(Grid, Grid),
+    'inner_columns': Arrow(Grid, Grid),
+    'inner_rows': Arrow(Grid, Grid),
+    'gravitate_right': Arrow(Grid, Grid),
+    'gravitate_left': Arrow(Grid, Grid),
+    'gravitate_up': Arrow(Grid, Grid),
+    'gravitate_down': Arrow(Grid, Grid),
+    'gravitate_left_right': Arrow(Grid, Grid),
+    'gravitate_top_down': Arrow(Grid, Grid),
+    'wrap_left': Arrow(Grid, Grid),
+    'wrap_right': Arrow(Grid, Grid),
+    'wrap_up': Arrow(Grid, Grid),
+    'wrap_down': Arrow(Grid, Grid),
+    'outer_columns': Arrow(Grid, Grid),
+    'outer_rows': Arrow(Grid, Grid),
+    'left_column': Arrow(Grid, Grid),
+    'right_column': Arrow(Grid, Grid),
+    'top_row': Arrow(Grid, Grid),
+    'bottom_row': Arrow(Grid, Grid),
+    'first_quadrant': Arrow(Grid, Grid),
+    'second_quadrant': Arrow(Grid, Grid),
+    'third_quadrant': Arrow(Grid, Grid),
+    'fourth_quadrant': Arrow(Grid, Grid),
+    'compress': Arrow(Grid, Grid),
+    'trim': Arrow(Grid, Grid),
+    'vmirror': Arrow(Grid, Grid),
+    'hmirror': Arrow(Grid, Grid),
+    'dmirror': Arrow(Grid, Grid),
+    'cmirror': Arrow(Grid, Grid),
+    'hconcat': Arrow(Grid, Arrow(Grid, Grid)),
+    'vconcat': Arrow(Grid, Arrow(Grid, Grid)),
+    'rot90': Arrow(Grid, Grid),
+    'rot180': Arrow(Grid, Grid),
+    'rot270': Arrow(Grid, Grid),
+    'tophalf': Arrow(Grid, Grid),
+    'bottomhalf': Arrow(Grid, Grid),
+    'lefthalf': Arrow(Grid, Grid),
+    'righthalf': Arrow(Grid, Grid),
+    '0': INT,
+    '1': INT,
+    '2': INT,
+    '3': INT,
+    '4': INT,
+    '5': INT,
+    '6': INT,
+    '7': INT,
+    '8': INT,
+    '9': INT
 }
 
 type_request = Arrow(Grid, Grid)
