@@ -80,7 +80,7 @@ def detokenize_grid_padded(a, assume_max_grid):
     print("==> ERROR: reached the end of the grid sequence without an end-of-grid token.")
     return padded_2d_grid
 
-def detokenize_grid_unpadded(a):
+def detokenize_grid_unpadded(a, as_tuple=True):
     grid = []
     row = []
     x = 0
@@ -95,13 +95,22 @@ def detokenize_grid_unpadded(a):
         x += 1
 
         if a[idx] == 2:
-            return tuple(grid)
+            if as_tuple:
+                return tuple(grid)
+            else:
+                return np.array(grid)
 
         if a[idx] == 1:
             y += 1
             x = 0
-            grid.append(tuple(row))
+            if as_tuple:
+                grid.append(tuple(row))
+            else:
+                grid.append(row)
             row = []
 
     print("==> ERROR: reached the end of the grid sequence without an end-of-grid token.")
-    return tuple(grid)
+    if as_tuple:
+        return tuple(grid)
+    else:
+        return np.array(grid)

@@ -1,33 +1,11 @@
 # The following primitives are a subset from Michael's Hodel's DSL that consists of grid-to-grid transformations only.
 # Michael Hodel's DSL: https://github.com/michaelhodel/arc-dsl
 
-from typing import (
-    List,
-    Union,
-    Tuple,
-    Any,
-    Container,
-    Callable,
-    FrozenSet,
-    Iterable
-)
+from utils.heap_search_type_system import INT, Arrow, List
 
-Boolean = bool
-Integer = int
-IntegerTuple = Tuple[Integer, Integer]
-Numerical = Union[Integer, IntegerTuple]
-IntegerSet = FrozenSet[Integer]
-Grid = Tuple[Tuple[Integer]]
-Cell = Tuple[Integer, IntegerTuple]
-Object = FrozenSet[Cell]
-Objects = FrozenSet[Object]
-Indices = FrozenSet[IntegerTuple]
-IndicesSet = FrozenSet[Indices]
-Patch = Union[Object, Indices]
-Element = Union[Object, Grid]
-Piece = Union[Grid, Patch]
-TupleTuple = Tuple[Tuple]
-ContainerContainer = Container[Container]
+from typing import (
+    Tuple,
+)
 
 ZERO = 0
 ONE = 1
@@ -105,6 +83,7 @@ def get_shortcuts():
     }
 
     return shortcuts
+
 def get_total_set():
     transformations = [
         ["Compress", "compress"],
@@ -262,17 +241,335 @@ def get_total_set():
 
     return transformations
 
-def identity(
-    x: Any
-) -> Any:
+def clear_single_colors(grid):
+    func = fork(paint, identity, chain(lbind(recolor, ZERO), rbind(mfilter, matcher(size, ONE)), partition))
+    return func(grid)
+
+def clear_double_colors(grid):
+    func = fork(paint, identity, chain(lbind(recolor, ZERO), rbind(mfilter, matcher(size, TWO)), partition))
+    return func(grid)
+
+def clear_triple_colors(grid):
+    func = fork(paint, identity, chain(lbind(recolor, ZERO), rbind(mfilter, matcher(size, THREE)), partition))
+    return func(grid)
+
+def drag_down_underpaint(grid):
+    func = fork(underpaint, identity, chain(rbind(shift, DOWN), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_down_paint(grid):
+    func = fork(paint, identity, chain(rbind(shift, DOWN), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_left_underpaint(grid):
+    func = fork(underpaint, identity, chain(rbind(shift, LEFT), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_left_paint(grid):
+    func = fork(paint, identity, chain(rbind(shift, LEFT), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_up_underpaint(grid):
+    func = fork(underpaint, identity, chain(rbind(shift, UP), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_up_paint(grid):
+    func = fork(paint, identity, chain(rbind(shift, UP), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_right_underpaint(grid):
+    func = fork(underpaint, identity, chain(rbind(shift, RIGHT), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_right_paint(grid):
+    func = fork(paint, identity, chain(rbind(shift, RIGHT), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_diagonally_underpaint(grid):
+    func = fork(underpaint, identity, chain(rbind(shift, UNITY), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_diagonally_paint(grid):
+    func = fork(paint, identity, chain(rbind(shift, UNITY), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_counterdiagonally_underpaint(grid):
+    func = fork(underpaint, identity, chain(rbind(shift, DOWN_LEFT), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def drag_counterdiagonally_paint(grid):
+    func = fork(paint, identity, chain(rbind(shift, DOWN_LEFT), rbind(sfilter, chain(flip, rbind(equality, ZERO), first)), asobject))
+    return func(grid)
+
+def extend_by_one(grid):
+    func = fork(paint, compose(lbind(canvas, ZERO), chain(increment, increment, shape)), compose(rbind(shift, UNITY), asobject))
+    return func(grid)
+
+def extend_by_two(grid):
+    func = fork(paint, chain(lbind(canvas, ZERO), power(increment, FOUR), shape), compose(rbind(shift, TWO_BY_TWO), asobject))
+    return func(grid)
+
+def insert_top_row(grid):
+    func = fork(vconcat, chain(lbind(canvas, ZERO), lbind(astuple, ONE), width), identity)
+    return func(grid)
+
+def insert_bottom_row(grid):
+    func = fork(vconcat, identity, chain(lbind(canvas, ZERO), lbind(astuple, ONE), width))
+    return func(grid)
+
+def insert_left_col(grid):
+    func = fork(hconcat, chain(lbind(canvas, ZERO), rbind(astuple, ONE), height), identity)
+    return func(grid)
+
+def insert_right_col(grid):
+    func = fork(hconcat, identity, chain(lbind(canvas, ZERO), rbind(astuple, ONE), height))
+    return func(grid)
+
+def stack_rows_horizontally(grid):
+    func = compose(rbind(repeat, ONE), merge)
+    return func(grid)
+
+def stack_rows_vertically(grid):
+    func = chain(dmirror, compose(rbind(repeat, ONE), merge), dmirror)
+    return func(grid)
+
+def stack_rows_horizontally_compress(grid):
+    func = chain(rbind(repeat, ONE), lbind(remove, ZERO), chain(first, rbind(repeat, ONE), merge))
+    return func(grid)
+
+def stack_columns_vertically_compress(grid):
+    func = chain(dmirror, chain(rbind(repeat, ONE), lbind(remove, ZERO), chain(first, rbind(repeat, ONE), merge)), dmirror)
+    return func(grid)
+
+def insert_cross(grid):
+    func = fork(paint, chain(lbind(canvas, ZERO), increment, shape), compose(merge, lbind(rapply, insert(fork(shift, chain(asobject, righthalf, bottomhalf), chain(increment, halve, shape)), insert(fork(shift, chain(asobject, lefthalf, bottomhalf), compose(toivec, chain(increment, halve, height))), insert(fork(shift, chain(asobject, righthalf, tophalf), compose(tojvec, chain(increment, halve, width))), initset(chain(asobject, lefthalf, tophalf))))))))
+    return func(grid)
+
+def insert_large_cross(grid):
+    func = fork(paint, chain(lbind(canvas, ZERO), compose(increment, increment), shape), compose(merge, lbind(rapply, insert(fork(shift, chain(asobject, righthalf, bottomhalf), chain(compose(increment, increment), halve, shape)), insert(fork(shift, chain(asobject, lefthalf, bottomhalf), compose(toivec, chain(compose(increment, increment), halve, height))), insert(fork(shift, chain(asobject, righthalf, tophalf), compose(tojvec, chain(compose(increment, increment), halve, width))), initset(chain(asobject, lefthalf, tophalf))))))))
+    return func(grid)
+
+def duo_wheel(grid):
+    return hconcat(lefthalf(grid), rot180(lefthalf(grid)))
+
+def quad_wheel(grid):
+    func = fork(vconcat, fork(hconcat, compose(lefthalf, tophalf), chain(rot90, lefthalf, tophalf)), fork(hconcat, chain(rot270, lefthalf, tophalf), chain(rot180, lefthalf, tophalf)))
+    return func(grid)
+
+def symmetrize_left_around_vertical(grid):
+    return hconcat(lefthalf(grid), vmirror(lefthalf(grid)))
+
+def symmetrize_right_around_vertical(grid):
+    return hconcat(vmirror(righthalf(grid)), righthalf(grid))
+
+def symmetrize_top_around_horizontal(grid):
+    return vconcat(tophalf(grid), hmirror(tophalf(grid)))
+
+def symmetrize_bottom_around_horizontal(grid):
+    return vconcat(hmirror(bottomhalf(grid)), bottomhalf(grid))
+
+def symmetrize_quad(grid):
+    func = fork(vconcat, fork(hconcat, compose(lefthalf, tophalf), chain(vmirror, lefthalf, tophalf)), fork(hconcat, chain(hmirror, lefthalf, tophalf), chain(compose(hmirror, vmirror), lefthalf, tophalf)))
+    return func(grid)
+
+def keep_only_diagonal(grid):
+    func = fork(paint, identity, compose(lbind(recolor, ZERO), fork(difference, asobject, fork(toobject, fork(connect, compose(ulcorner, asindices), compose(lrcorner, asindices)), identity))))
+    return func(grid)
+
+def shear_rows_left(grid):
+    func = compose(lbind(apply, fork(combine, compose(lbind(apply, first), fork(sfilter, fork(pair, last, chain(rbind(lbind(interval, ZERO), ONE), size, last)), chain(rbind(compose, compose(increment, last)), lbind(rbind, greater), first))), compose(lbind(apply, first), fork(sfilter, fork(pair, last, chain(rbind(lbind(interval, ZERO), ONE), size, last)), chain(rbind(compose, last), lbind(lbind, greater), first))))), fork(pair, compose(rbind(lbind(interval, ZERO), ONE), height), identity))
+    return func(grid)
+
+def shear_rows_right(grid):
+    func = chain(vmirror, compose(lbind(apply, fork(combine, compose(lbind(apply, first), fork(sfilter, fork(pair, last, chain(rbind(lbind(interval, ZERO), ONE), size, last)), chain(rbind(compose, compose(increment, last)), lbind(rbind, greater), first))), compose(lbind(apply, first), fork(sfilter, fork(pair, last, chain(rbind(lbind(interval, ZERO), ONE), size, last)), chain(rbind(compose, last), lbind(lbind, greater), first))))), fork(pair, compose(rbind(lbind(interval, ZERO), ONE), height), identity)), vmirror)
+    return func(grid)
+
+def shear_cols_down(grid):
+    func = chain(dmirror, compose(lbind(apply, fork(combine, compose(lbind(apply, first), fork(sfilter, fork(pair, last, chain(rbind(lbind(interval, ZERO), ONE), size, last)), chain(rbind(compose, compose(increment, last)), lbind(rbind, greater), first))), compose(lbind(apply, first), fork(sfilter, fork(pair, last, chain(rbind(lbind(interval, ZERO), ONE), size, last)), chain(rbind(compose, last), lbind(lbind, greater), first))))), fork(pair, compose(rbind(lbind(interval, ZERO), ONE), height), identity)), dmirror)
+    return func(grid)
+
+def shear_cols_up(grid):
+    func = chain(dmirror, chain(vmirror, compose(lbind(apply, fork(combine, compose(lbind(apply, first), fork(sfilter, fork(pair, last, chain(rbind(lbind(interval, ZERO), ONE), size, last)), chain(rbind(compose, compose(increment, last)), lbind(rbind, greater), first))), compose(lbind(apply, first), fork(sfilter, fork(pair, last, chain(rbind(lbind(interval, ZERO), ONE), size, last)), chain(rbind(compose, last), lbind(lbind, greater), first))))), fork(pair, compose(rbind(lbind(interval, ZERO), ONE), height), identity)), vmirror), dmirror)
+    return func(grid)
+
+def upscale_horizontal_by_two(grid):
+    return hupscale(grid, TWO)
+
+def upscale_vertical_by_two(grid):
+    return vupscale(grid, TWO)
+
+def upscale_horizontal_by_three(grid):
+    return hupscale(grid, THREE)
+
+def upscale_vertical_by_three(grid):
+    return vupscale(grid, THREE)
+
+def upscale_by_two(grid):
+    return upscale(grid, TWO)
+
+def upscale_by_three(grid):
+    return upscale(grid, THREE)
+
+def clear_outline(grid):
+    func = fork(paint, identity, chain(lbind(recolor, ZERO), box, asindices))
+    return func(grid)
+
+def clear_all_but_outline(grid):
+    func = fork(paint, identity, compose(lbind(recolor, ZERO), fork(difference, asindices, compose(box, asindices))))
+    return func(grid)
+
+def clear_top_row(grid):
+    func = fork(paint, identity, compose(lbind(recolor, ZERO), fork(connect, compose(ulcorner, asobject), compose(urcorner, asobject))))
+    return func(grid)
+
+def clear_bottom_row(grid):
+    func = chain(hmirror, fork(paint, identity, compose(lbind(recolor, ZERO), fork(connect, compose(ulcorner, asobject), compose(urcorner, asobject)))), hmirror)
+    return func(grid)
+
+def clear_left_column(grid):
+    func = chain(rot270, fork(paint, identity, compose(lbind(recolor, ZERO), fork(connect, compose(ulcorner, asobject), compose(urcorner, asobject)))), rot90)
+    return func(grid)
+
+def clear_right_column(grid):
+    func = chain(rot90, fork(paint, identity, compose(lbind(recolor, ZERO), fork(connect, compose(ulcorner, asobject), compose(urcorner, asobject)))), rot270)
+    return func(grid)
+
+def clear_diagonal(grid):
+    func = fork(paint, identity, compose(lbind(recolor, ZERO), fork(connect, compose(ulcorner, asindices), compose(lrcorner, asindices))))
+    return func(grid)
+
+def clear_counterdiagonal(grid):
+    func = fork(paint, identity, compose(lbind(recolor, ZERO), fork(connect, compose(urcorner, asindices), compose(llcorner, asindices))))
+    return func(grid)
+
+
+def rep_first_row(grid):
+    return repeat(first(grid), height(grid))
+
+def rep_last_row(grid):
+    return repeat(last(grid), height(grid))
+
+def rep_first_col(grid):
+    rot_grid = rot90(grid)
+    return rot270(repeat(first(rot_grid), height(rot_grid)))
+
+def rep_last_col(grid):
+    rot_grid = rot270(grid)
+    return rot90(repeat(first(rot_grid), height(rot_grid)))
+
+def remove_top_row(grid):
+    func = fork(subgrid, compose(lbind(insert, DOWN), chain(initset, decrement, shape)), identity)
+    return func(grid)
+
+def remove_bottom_row(grid):
+    func = chain(hmirror, fork(subgrid, compose(lbind(insert, DOWN), chain(initset, decrement, shape)), identity), hmirror)
+    return func(grid)
+
+def remove_left_column(grid):
+    func = chain(rot270, fork(subgrid, compose(lbind(insert, DOWN), chain(initset, decrement, shape)), identity), rot90)
+    return func(grid)
+
+def remove_right_column(grid):
+    func = chain(rot90, fork(subgrid, compose(lbind(insert, DOWN), chain(initset, decrement, shape)), identity), rot270)
+    return func(grid)
+
+
+
+# TODO: test this
+def inner_columns(grid):
+    return subgrid(
+                insert(add(shape(grid), multiply(LEFT, TWO)), initset(RIGHT)),
+                grid)
+
+# TODO: test this
+def inner_rows(grid):
+    return subgrid(
+                insert(add(multiply(UP, TWO), shape(grid)), initset(DOWN)),
+                grid)
+
+# TODO: test this
+def gravitate_right(grid):
+    func = lbind(apply, fork(combine, compose(lbind(repeat, ZERO), compose(rbind(colorcount, ZERO), rbind(repeat, ONE))), lbind(remove, ZERO)))
+    return func(grid)
+
+# TODO: test this
+def gravitate_left(grid):
+    func = lbind(apply, fork(combine, lbind(remove, ZERO), chain(lbind(repeat, ZERO), rbind(colorcount, ZERO), rbind(repeat, ONE))))
+    return func(grid)
+
+def gravitate_up(grid):
+    func = chain(rot270, lbind(apply, fork(combine, compose(lbind(repeat, ZERO), compose(rbind(colorcount, ZERO), rbind(repeat, ONE))), lbind(remove, ZERO))), rot90)
+    return func(grid)
+
+def gravitate_down(grid):
+    func = chain(rot270, lbind(apply, fork(combine, lbind(remove, ZERO), chain(lbind(repeat, ZERO), rbind(colorcount, ZERO), rbind(repeat, ONE)))), rot90)
+    return func(grid)
+
+def gravitate_left_right(grid):
+    func = fork(hconcat, compose(lbind(apply, fork(combine, lbind(remove, ZERO), chain(lbind(repeat, ZERO), rbind(colorcount, ZERO), rbind(repeat, ONE)))), lefthalf), compose(lbind(apply, fork(combine, compose(lbind(repeat, ZERO), compose(rbind(colorcount, ZERO), rbind(repeat, ONE))), lbind(remove, ZERO))), righthalf))
+    return func(grid)
+
+def gravitate_top_down(grid):
+    func = fork(vconcat, compose(chain(rot270, lbind(apply, fork(combine, compose(lbind(repeat, ZERO), compose(rbind(colorcount, ZERO), rbind(repeat, ONE))), lbind(remove, ZERO))), rot90), tophalf), compose(chain(rot270, lbind(apply, fork(combine, lbind(remove, ZERO), chain(lbind(repeat, ZERO), rbind(colorcount, ZERO), rbind(repeat, ONE)))), rot90), bottomhalf))
+    return func(grid)
+
+def wrap_left(grid):
+    func = fork(hconcat, fork(subgrid, compose(compose(lbind(insert, RIGHT), initset), fork(astuple, compose(decrement, height), compose(decrement, width))), identity), fork(subgrid, compose(compose(lbind(insert, ORIGIN), initset), compose(toivec, compose(decrement, height))), identity))
+    return func(grid)
+
+def wrap_right(grid):
+    func = chain(vmirror, fork(hconcat, fork(subgrid, compose(compose(lbind(insert, RIGHT), initset), fork(astuple, compose(decrement, height), compose(decrement, width))), identity), fork(subgrid, compose(compose(lbind(insert, ORIGIN), initset), compose(toivec, compose(decrement, height))), identity)), vmirror)
+    return func(grid)
+
+def wrap_up(grid):
+    func = chain(rot90, fork(hconcat, fork(subgrid, compose(compose(lbind(insert, RIGHT), initset), fork(astuple, compose(decrement, height), compose(decrement, width))), identity), fork(subgrid, compose(compose(lbind(insert, ORIGIN), initset), compose(toivec, compose(decrement, height))), identity)), rot270)
+    return func(grid)
+
+def wrap_down(grid):
+    func = chain(rot270, fork(hconcat, fork(subgrid, compose(compose(lbind(insert, RIGHT), initset), fork(astuple, compose(decrement, height), compose(decrement, width))), identity), fork(subgrid, compose(compose(lbind(insert, ORIGIN), initset), compose(toivec, compose(decrement, height))), identity)), rot90)
+    return func(grid)
+
+# TODO: test this
+def outer_columns(grid):
+    return hconcat(first(hsplit(grid, width(grid))), last(hsplit(grid, width(grid))))
+
+# TODO: test this
+def outer_rows(grid):
+    return vconcat(first(vsplit(grid, height(grid))), last(vsplit(grid, height(grid))))
+
+# TODO: test this
+def left_column(grid):
+    return first(hsplit(grid, width(grid)))
+
+# TODO: test this
+def right_column(grid):
+    return last(hsplit(grid, width(grid)))
+
+# TODO: test this
+def top_row(grid):
+    return first(vsplit(grid, height(grid)))
+
+# TODO: test this
+def bottom_row(grid):
+    return last(vsplit(grid, height(grid)))
+
+def first_quadrant(grid):
+    return tophalf(lefthalf(grid))
+
+def second_quadrant(grid):
+    return tophalf(righthalf(grid))
+
+def third_quadrant(grid):
+    return bottomhalf(lefthalf(grid))
+
+def fourth_quandrant(grid):
+    return bottomhalf(righthalf(grid))
+
+def identity(x):
     """ identity function """
     return x
 
-
-def add(
-    a: Numerical,
-    b: Numerical
-) -> Numerical:
+def add(a, b):
     """ addition """
     if isinstance(a, int) and isinstance(b, int):
         return a + b
@@ -282,11 +579,7 @@ def add(
         return (a + b[0], a + b[1])
     return (a[0] + b, a[1] + b)
 
-
-def subtract(
-    a: Numerical,
-    b: Numerical
-) -> Numerical:
+def subtract(a, b):
     """ subtraction """
     if isinstance(a, int) and isinstance(b, int):
         return a - b
@@ -297,10 +590,7 @@ def subtract(
     return (a[0] - b, a[1] - b)
 
 
-def multiply(
-    a: Numerical,
-    b: Numerical
-) -> Numerical:
+def multiply(a, b):
     """ multiplication """
     if isinstance(a, int) and isinstance(b, int):
         return a * b
@@ -310,11 +600,7 @@ def multiply(
         return (a * b[0], a * b[1])
     return (a[0] * b, a[1] * b)
 
-
-def divide(
-    a: Numerical,
-    b: Numerical
-) -> Numerical:
+def divide(a, b):
     """ floor division """
     if isinstance(a, int) and isinstance(b, int):
         return a // b
@@ -324,227 +610,123 @@ def divide(
         return (a // b[0], a // b[1])
     return (a[0] // b, a[1] // b)
 
-
-def invert(
-    n: Numerical
-) -> Numerical:
+def invert(n):
     """ inversion with respect to addition """
     return -n if isinstance(n, int) else (-n[0], -n[1])
 
-
-def even(
-    n: Integer
-) -> Boolean:
+def even(n):
     """ evenness """
     return n % 2 == 0
 
-
-def double(
-    n: Numerical
-) -> Numerical:
+def double(n):
     """ scaling by two """
     return n * 2 if isinstance(n, int) else (n[0] * 2, n[1] * 2)
 
-
-def halve(
-    n: Numerical
-) -> Numerical:
+def halve(n):
     """ scaling by one half """
     return n // 2 if isinstance(n, int) else (n[0] // 2, n[1] // 2)
 
-
-def flip(
-    b: Boolean
-) -> Boolean:
+def flip(b):
     """ logical not """
     return not b
 
-
-def equality(
-    a: Any,
-    b: Any
-) -> Boolean:
+def equality(a, b):
     """ equality """
     return a == b
 
-
-def contained(
-    value: Any,
-    container: Container
-) -> Boolean:
+def contained(value, container):
     """ element of """
     return value in container
 
-
-def combine(
-    a: Container,
-    b: Container
-) -> Container:
+def combine(a, b):
     """ union """
     return type(a)((*a, *b))
 
-
-def intersection(
-    a: FrozenSet,
-    b: FrozenSet
-) -> FrozenSet:
+def intersection(a, b):
     """ returns the intersection of two containers """
     return a & b
 
-
-def difference(
-    a: Container,
-    b: Container
-) -> Container:
+def difference(a, b):
     """ difference """
     return type(a)(e for e in a if e not in b)
 
-
-def dedupe(
-    iterable: Tuple
-) -> Tuple:
+def dedupe(iterable):
     """ remove duplicates """
     return tuple(e for i, e in enumerate(iterable) if iterable.index(e) == i)
 
-
-def order(
-    container: Container,
-    compfunc: Callable
-) -> Tuple:
+def order(container, compfunc):
     """ order container by custom key """
     return tuple(sorted(container, key=compfunc))
 
-
-def repeat(
-    item: Any,
-    num: Integer
-) -> Tuple:
+def repeat(item, num):
     """ repetition of item within vector """
     return tuple(item for i in range(num))
 
-
-def greater(
-    a: Integer,
-    b: Integer
-) -> Boolean:
+def greater(a, b):
     """ greater """
     return a > b
 
-
-def size(
-    container: Container
-) -> Integer:
+def size(container):
     """ cardinality """
     return len(container)
 
-
-def merge(
-    containers: ContainerContainer
-) -> Container:
+def merge(containers):
     """ merging """
     return type(containers)(e for c in containers for e in c)
 
-
-def maximum(
-    container: IntegerSet
-) -> Integer:
+def maximum(container):
     """ maximum """
     return max(container, default=0)
 
-
-def minimum(
-    container: IntegerSet
-) -> Integer:
+def minimum(container):
     """ minimum """
     return min(container, default=0)
 
-
-def valmax(
-    container: Container,
-    compfunc: Callable
-) -> Integer:
+def valmax(container, compfunc):
     """ maximum by custom function """
     return compfunc(max(container, key=compfunc, default=0))
 
-
-def valmin(
-    container: Container,
-    compfunc: Callable
-) -> Integer:
+def valmin(container, compfunc):
     """ minimum by custom function """
     return compfunc(min(container, key=compfunc, default=0))
 
-
-def argmax(
-    container: Container,
-    compfunc: Callable
-) -> Any:
+def argmax(container, compfunc):
     """ largest item by custom order """
     return max(container, key=compfunc, default=None)
 
-
-def argmin(
-    container: Container,
-    compfunc: Callable
-) -> Any:
+def argmin(container, compfunc):
     """ smallest item by custom order """
     return min(container, key=compfunc, default=None)
 
-
-def mostcommon(
-    container: Container
-) -> Any:
+def mostcommon(container):
     """ most common item """
     return max(set(container), key=container.count)
 
-
-def leastcommon(
-    container: Container
-) -> Any:
+def leastcommon(container):
     """ least common item """
     return min(set(container), key=container.count)
 
-
-def initset(
-    value: Any
-) -> FrozenSet:
+def initset(value):
     """ initialize container """
     return frozenset({value})
 
-
-def both(
-    a: Boolean,
-    b: Boolean
-) -> Boolean:
+def both(a, b):
     """ logical and """
     return a and b
 
-
-def either(
-    a: Boolean,
-    b: Boolean
-) -> Boolean:
+def either(a, b):
     """ logical or """
     return a or b
 
-
-def increment(
-    x: Numerical
-) -> Numerical:
+def increment(x):
     """ incrementing """
     return x + 1 if isinstance(x, int) else (x[0] + 1, x[1] + 1)
 
-
-def decrement(
-    x: Numerical
-) -> Numerical:
+def decrement(x):
     """ decrementing """
     return x - 1 if isinstance(x, int) else (x[0] - 1, x[1] - 1)
 
-
-def crement(
-    x: Numerical
-) -> Numerical:
+def crement(x):
     """ incrementing positive and decrementing negative """
     if isinstance(x, int):
         return 0 if x == 0 else (x + 1 if x > 0 else x - 1)
@@ -553,10 +735,7 @@ def crement(
         0 if x[1] == 0 else (x[1] + 1 if x[1] > 0 else x[1] - 1)
     )
 
-
-def sign(
-    x: Numerical
-) -> Numerical:
+def sign(x):
     """ sign """
     if isinstance(x, int):
         return 0 if x == 0 else (1 if x > 0 else -1)
@@ -565,168 +744,87 @@ def sign(
         0 if x[1] == 0 else (1 if x[1] > 0 else -1)
     )
 
-
-def positive(
-    x: Integer
-) -> Boolean:
+def positive(x):
     """ positive """
     return x > 0
 
-
-def toivec(
-    i: Integer
-) -> IntegerTuple:
+def toivec(i):
     """ vector pointing vertically """
     return (i, 0)
 
-
-def tojvec(
-    j: Integer
-) -> IntegerTuple:
+def tojvec(j):
     """ vector pointing horizontally """
     return (0, j)
 
-
-def sfilter(
-    container: Container,
-    condition: Callable
-) -> Container:
+def sfilter(container, condition):
     """ keep elements in container that satisfy condition """
     return type(container)(e for e in container if condition(e))
 
-
-def mfilter(
-    container: Container,
-    function: Callable
-) -> FrozenSet:
+def mfilter(container, function):
     """ filter and merge """
     return merge(sfilter(container, function))
 
-
-def extract(
-    container: Container,
-    condition: Callable
-) -> Any:
+def extract(container, condition):
     """ first element of container that satisfies condition """
     return next(e for e in container if condition(e))
 
-
-def totuple(
-    container: FrozenSet
-) -> Tuple:
+def totuple(container):
     """ conversion to tuple """
     return tuple(container)
 
-
-def first(
-    container: Container
-) -> Any:
+def first(container):
     """ first item of container """
     return next(iter(container))
 
-
-def last(
-    container: Container
-) -> Any:
+def last(container):
     """ last item of container """
     return max(enumerate(container))[1]
 
-
-def insert(
-    value: Any,
-    container: FrozenSet
-) -> FrozenSet:
+def insert(value, container):
     """ insert item into container """
     return container.union(frozenset({value}))
 
-
-def remove(
-    value: Any,
-    container: Container
-) -> Container:
+def remove(value, container):
     """ remove item from container """
     return type(container)(e for e in container if e != value)
 
-
-def other(
-    container: Container,
-    value: Any
-) -> Any:
+def other(container, value):
     """ other value in the container """
     return first(remove(value, container))
 
-
-def interval(
-    start: Integer,
-    stop: Integer,
-    step: Integer
-) -> Tuple:
+def interval(start, stop, step):
     """ range """
     return tuple(range(start, stop, step))
 
-
-def astuple(
-    a: Integer,
-    b: Integer
-) -> IntegerTuple:
+def astuple(a, b):
     """ constructs a tuple """
     return (a, b)
 
-
-def product(
-    a: Container,
-    b: Container
-) -> FrozenSet:
+def product(a, b):
     """ cartesian product """
     return frozenset((i, j) for j in b for i in a)
 
-
-def pair(
-    a: Tuple,
-    b: Tuple
-) -> TupleTuple:
+def pair(a, b):
     """ zipping of two tuples """
     return tuple(zip(a, b))
 
-
-def branch(
-    condition: Boolean,
-    if_value: Any,
-    else_value: Any
-) -> Any:
+def branch(condition, if_value, else_value):
     """ if else branching """
     return if_value if condition else else_value
 
-
-def compose(
-    outer: Callable,
-    inner: Callable
-) -> Callable:
+def compose(outer, inner):
     """ function composition """
     return lambda x: outer(inner(x))
 
-
-def chain(
-    h: Callable,
-    g: Callable,
-    f: Callable
-) -> Callable:
+def chain(h, g, f):
     """ function composition with three functions """
     return lambda x: h(g(f(x)))
 
-
-def matcher(
-    function: Callable,
-    target: Any
-) -> Callable:
+def matcher(function, target):
     """ construction of equality function """
     return lambda x: function(x) == target
 
-
-def rbind(
-    function: Callable,
-    fixed: Any
-) -> Callable:
+def rbind(function, fixed):
     """ fix the rightmost argument """
     n = function.__code__.co_argcount
     if n == 2:
@@ -736,11 +834,7 @@ def rbind(
     else:
         return lambda x, y, z: function(x, y, z, fixed)
 
-
-def lbind(
-    function: Callable,
-    fixed: Any
-) -> Callable:
+def lbind(function, fixed):
     """ fix the leftmost argument """
     n = function.__code__.co_argcount
     if n == 2:
@@ -750,96 +844,51 @@ def lbind(
     else:
         return lambda y, z, a: function(fixed, y, z, a)
 
-
-def power(
-    function: Callable,
-    n: Integer
-) -> Callable:
+def power(function, n):
     """ power of function """
     if n == 1:
         return function
     return compose(function, power(function, n - 1))
 
-
-def fork(
-    outer: Callable,
-    a: Callable,
-    b: Callable
-) -> Callable:
+def fork(outer, a, b):
     """ creates a wrapper function """
     return lambda x: outer(a(x), b(x))
 
-
-def apply(
-    function: Callable,
-    container: Container
-) -> Container:
+def apply(function, container):
     """ apply function to each item in container """
     return type(container)(function(e) for e in container)
 
-
-def rapply(
-    functions: Container,
-    value: Any
-) -> Container:
+def rapply(functions, value):
     """ apply each function in container to value """
     return type(functions)(function(value) for function in functions)
 
-
-def mapply(
-    function: Callable,
-    container: ContainerContainer
-) -> FrozenSet:
+def mapply(function, container):
     """ apply and merge """
     return merge(apply(function, container))
 
-
-def papply(
-    function: Callable,
-    a: Tuple,
-    b: Tuple
-) -> Tuple:
+def papply(function, a, b):
     """ apply function on two vectors """
     return tuple(function(i, j) for i, j in zip(a, b))
 
-
-def mpapply(
-    function: Callable,
-    a: Tuple,
-    b: Tuple
-) -> Tuple:
+def mpapply(function, a, b):
     """ apply function on two vectors and merge """
     return merge(papply(function, a, b))
 
-
-def prapply(
-    function: Callable,
-    a: Container,
-    b: Container
-) -> FrozenSet:
+def prapply(function, a, b):
     """ apply function on cartesian product """
     return frozenset(function(i, j) for j in b for i in a)
 
-
-def mostcolor(
-    element: Element
-) -> Integer:
+def mostcolor(element):
     """ most common color """
     values = [v for r in element for v in r] if isinstance(element, tuple) else [v for v, _ in element]
     return max(set(values), key=values.count)
 
-
-def leastcolor(
-    element: Element
-) -> Integer:
+def leastcolor(element):
     """ least common color """
     values = [v for r in element for v in r] if isinstance(element, tuple) else [v for v, _ in element]
     return min(set(values), key=values.count)
 
-
-def height(
-    piece: Piece
-) -> Integer:
+def height(piece):
     """ height of grid or patch """
     if len(piece) == 0:
         return 0
@@ -847,10 +896,7 @@ def height(
         return len(piece)
     return lowermost(piece) - uppermost(piece) + 1
 
-
-def width(
-    piece: Piece
-) -> Integer:
+def width(piece):
     """ width of grid or patch """
     if len(piece) == 0:
         return 0
@@ -858,102 +904,57 @@ def width(
         return len(piece[0])
     return rightmost(piece) - leftmost(piece) + 1
 
-
-def shape(
-    piece: Piece
-) -> IntegerTuple:
+def shape(piece):
     """ height and width of grid or patch """
     return (height(piece), width(piece))
 
-
-def portrait(
-    piece: Piece
-) -> Boolean:
+def portrait(piece):
     """ whether height is greater than width """
     return height(piece) > width(piece)
 
-
-def colorcount(
-    element: Element,
-    value: Integer
-) -> Integer:
+def colorcount(element, value):
     """ number of cells with color """
     if isinstance(element, tuple):
         return sum(row.count(value) for row in element)
     return sum(v == value for v, _ in element)
 
-
-def colorfilter(
-    objs: Objects,
-    value: Integer
-) -> Objects:
+def colorfilter(objs, value):
     """ filter objects by color """
     return frozenset(obj for obj in objs if next(iter(obj))[0] == value)
 
-
-def sizefilter(
-    container: Container,
-    n: Integer
-) -> FrozenSet:
+def sizefilter(container, n):
     """ filter items by size """
     return frozenset(item for item in container if len(item) == n)
 
-
-def asindices(
-    grid: Grid
-) -> Indices:
+def asindices(grid):
     """ indices of all grid cells """
     return frozenset((i, j) for i in range(len(grid)) for j in range(len(grid[0])))
 
-
-def ofcolor(
-    grid: Grid,
-    value: Integer
-) -> Indices:
+def ofcolor(grid, value):
     """ indices of all grid cells with value """
     return frozenset((i, j) for i, r in enumerate(grid) for j, v in enumerate(r) if v == value)
 
-
-def ulcorner(
-    patch: Patch
-) -> IntegerTuple:
+def ulcorner(patch):
     """ index of upper left corner """
     return tuple(map(min, zip(*toindices(patch))))
 
-
-def urcorner(
-    patch: Patch
-) -> IntegerTuple:
+def urcorner(patch):
     """ index of upper right corner """
     return tuple(map(lambda ix: {0: min, 1: max}[ix[0]](ix[1]), enumerate(zip(*toindices(patch)))))
 
-
-def llcorner(
-    patch: Patch
-) -> IntegerTuple:
+def llcorner(patch):
     """ index of lower left corner """
     return tuple(map(lambda ix: {0: max, 1: min}[ix[0]](ix[1]), enumerate(zip(*toindices(patch)))))
 
-
-def lrcorner(
-    patch: Patch
-) -> IntegerTuple:
+def lrcorner(patch):
     """ index of lower right corner """
     return tuple(map(max, zip(*toindices(patch))))
 
-
-def crop(
-    grid: Grid,
-    start: IntegerTuple,
-    dims: IntegerTuple
-) -> Grid:
+def crop(grid, start, dims):
     """ subgrid specified by start and dimension """
     return tuple(r[start[1]:start[1]+dims[1]] for r in grid[start[0]:start[0]+dims[0]])
 
-
-def toindices(
-    patch: Patch
-) -> Indices:
+def toindices(patch):
     """ indices of object cells """
     if len(patch) == 0:
         return frozenset()
@@ -961,19 +962,11 @@ def toindices(
         return frozenset(index for value, index in patch)
     return patch
 
-
-def recolor(
-    value: Integer,
-    patch: Patch
-) -> Object:
+def recolor(value, patch):
     """ recolor patch """
     return frozenset((value, index) for index in toindices(patch))
 
-
-def shift(
-    patch: Patch,
-    directions: IntegerTuple
-) -> Patch:
+def shift(patch, directions):
     """ shift patch """
     if len(patch) == 0:
         return patch
@@ -982,43 +975,25 @@ def shift(
         return frozenset((value, (i + di, j + dj)) for value, (i, j) in patch)
     return frozenset((i + di, j + dj) for i, j in patch)
 
-
-def normalize(
-    patch: Patch
-) -> Patch:
+def normalize(patch):
     """ moves upper left corner to origin """
     if len(patch) == 0:
         return patch
     return shift(patch, (-uppermost(patch), -leftmost(patch)))
 
-
-def dneighbors(
-    loc: IntegerTuple
-) -> Indices:
+def dneighbors(loc):
     """ directly adjacent indices """
     return frozenset({(loc[0] - 1, loc[1]), (loc[0] + 1, loc[1]), (loc[0], loc[1] - 1), (loc[0], loc[1] + 1)})
 
-
-def ineighbors(
-    loc: IntegerTuple
-) -> Indices:
+def ineighbors(loc):
     """ diagonally adjacent indices """
     return frozenset({(loc[0] - 1, loc[1] - 1), (loc[0] - 1, loc[1] + 1), (loc[0] + 1, loc[1] - 1), (loc[0] + 1, loc[1] + 1)})
 
-
-def neighbors(
-    loc: IntegerTuple
-) -> Indices:
+def neighbors(loc):
     """ adjacent indices """
     return dneighbors(loc) | ineighbors(loc)
 
-
-def objects(
-    grid: Grid,
-    univalued: Boolean,
-    diagonal: Boolean,
-    without_bg: Boolean
-) -> Objects:
+def objects(grid, univalued, diagonal, without_bg):
     """ objects occurring on the grid """
     bg = mostcolor(grid) if without_bg else None
     objs = set()
@@ -1048,10 +1023,7 @@ def objects(
         objs.add(frozenset(obj))
     return frozenset(objs)
 
-
-def partition(
-    grid: Grid
-) -> Objects:
+def partition(grid):
     """ each cell with the same value part of the same object """
     return frozenset(
         frozenset(
@@ -1059,10 +1031,7 @@ def partition(
         ) for value in palette(grid)
     )
 
-
-def fgpartition(
-    grid: Grid
-) -> Objects:
+def fgpartition(grid):
     """ each cell with the same value part of the same object without background """
     return frozenset(
         frozenset(
@@ -1070,166 +1039,96 @@ def fgpartition(
         ) for value in palette(grid) - {mostcolor(grid)}
     )
 
-
-def uppermost(
-    patch: Patch
-) -> Integer:
+def uppermost(patch):
     """ row index of uppermost occupied cell """
     return min(i for i, j in toindices(patch))
 
-
-def lowermost(
-    patch: Patch
-) -> Integer:
+def lowermost(patch):
     """ row index of lowermost occupied cell """
     return max(i for i, j in toindices(patch))
 
-
-def leftmost(
-    patch: Patch
-) -> Integer:
+def leftmost(patch):
     """ column index of leftmost occupied cell """
     return min(j for i, j in toindices(patch))
 
-
-def rightmost(
-    patch: Patch
-) -> Integer:
+def rightmost(patch):
     """ column index of rightmost occupied cell """
     return max(j for i, j in toindices(patch))
 
-
-def square(
-    piece: Piece
-) -> Boolean:
+def square(piece):
     """ whether the piece forms a square """
     return len(piece) == len(piece[0]) if isinstance(piece, tuple) else height(piece) * width(piece) == len(piece) and height(piece) == width(piece)
 
-
-def vline(
-    patch: Patch
-) -> Boolean:
+def vline(patch):
     """ whether the piece forms a vertical line """
     return height(patch) == len(patch) and width(patch) == 1
 
-
-def hline(
-    patch: Patch
-) -> Boolean:
+def hline(patch):
     """ whether the piece forms a horizontal line """
     return width(patch) == len(patch) and height(patch) == 1
 
-
-def hmatching(
-    a: Patch,
-    b: Patch
-) -> Boolean:
+def hmatching(a, b):
     """ whether there exists a row for which both patches have cells """
     return len(set(i for i, j in toindices(a)) & set(i for i, j in toindices(b))) > 0
 
-
-def vmatching(
-    a: Patch,
-    b: Patch
-) -> Boolean:
+def vmatching(a, b):
     """ whether there exists a column for which both patches have cells """
     return len(set(j for i, j in toindices(a)) & set(j for i, j in toindices(b))) > 0
 
-
-def manhattan(
-    a: Patch,
-    b: Patch
-) -> Integer:
+def manhattan(a, b):
     """ closest manhattan distance between two patches """
     return min(abs(ai - bi) + abs(aj - bj) for ai, aj in toindices(a) for bi, bj in toindices(b))
 
-
-def adjacent(
-    a: Patch,
-    b: Patch
-) -> Boolean:
+def adjacent(a, b):
     """ whether two patches are adjacent """
     return manhattan(a, b) == 1
 
-
-def bordering(
-    patch: Patch,
-    grid: Grid
-) -> Boolean:
+def bordering(patch, grid):
     """ whether a patch is adjacent to a grid border """
     return uppermost(patch) == 0 or leftmost(patch) == 0 or lowermost(patch) == len(grid) - 1 or rightmost(patch) == len(grid[0]) - 1
 
-
-def centerofmass(
-    patch: Patch
-) -> IntegerTuple:
+def centerofmass(patch):
     """ center of mass """
     return tuple(map(lambda x: sum(x) // len(patch), zip(*toindices(patch))))
 
-
-def palette(
-    element: Element
-) -> IntegerSet:
+def palette(element):
     """ colors occurring in object or grid """
     if isinstance(element, tuple):
         return frozenset({v for r in element for v in r})
     return frozenset({v for v, _ in element})
 
-
-def numcolors(
-    element: Element
-) -> IntegerSet:
+def numcolors(element):
     """ number of colors occurring in object or grid """
     return len(palette(element))
 
-
-def color(
-    obj: Object
-) -> Integer:
+def color(obj):
     """ color of object """
     return next(iter(obj))[0]
 
-
-def toobject(
-    patch: Patch,
-    grid: Grid
-) -> Object:
+def toobject(patch, grid):
     """ object from patch and grid """
     h, w = len(grid), len(grid[0])
     return frozenset((grid[i][j], (i, j)) for i, j in toindices(patch) if 0 <= i < h and 0 <= j < w)
 
-
-def asobject(
-    grid: Grid
-) -> Object:
+def asobject(grid):
     """ conversion of grid to object """
     return frozenset((v, (i, j)) for i, r in enumerate(grid) for j, v in enumerate(r))
 
-
-def rot90(
-    grid: Grid
-) -> Grid:
+def rot90(grid):
     """ quarter clockwise rotation """
     return tuple(row for row in zip(*grid[::-1]))
 
-
-def rot180(
-    grid: Grid
-) -> Grid:
+def rot180(grid):
     """ half rotation """
     return tuple(tuple(row[::-1]) for row in grid[::-1])
 
 
-def rot270(
-    grid: Grid
-) -> Grid:
+def rot270(grid):
     """ quarter anticlockwise rotation """
     return tuple(tuple(row[::-1]) for row in zip(*grid[::-1]))[::-1]
 
 
-def hmirror(
-    piece: Piece
-) -> Piece:
+def hmirror(piece):
     """ mirroring along horizontal """
     if isinstance(piece, tuple):
         return piece[::-1]
@@ -1238,10 +1137,7 @@ def hmirror(
         return frozenset((v, (d - i, j)) for v, (i, j) in piece)
     return frozenset((d - i, j) for i, j in piece)
 
-
-def vmirror(
-    piece: Piece
-) -> Piece:
+def vmirror(piece):
     """ mirroring along vertical """
     if isinstance(piece, tuple):
         return tuple(row[::-1] for row in piece)
@@ -1250,10 +1146,7 @@ def vmirror(
         return frozenset((v, (i, d - j)) for v, (i, j) in piece)
     return frozenset((i, d - j) for i, j in piece)
 
-
-def dmirror(
-    piece: Piece
-) -> Piece:
+def dmirror(piece):
     """ mirroring along diagonal """
     if isinstance(piece, tuple):
         return tuple(zip(*piece))
@@ -1262,21 +1155,13 @@ def dmirror(
         return frozenset((v, (j - b + a, i - a + b)) for v, (i, j) in piece)
     return frozenset((j - b + a, i - a + b) for i, j in piece)
 
-
-def cmirror(
-    piece: Piece
-) -> Piece:
+def cmirror(piece):
     """ mirroring along counterdiagonal """
     if isinstance(piece, tuple):
         return tuple(zip(*(r[::-1] for r in piece[::-1])))
     return vmirror(dmirror(vmirror(piece)))
 
-
-def fill(
-    grid: Grid,
-    value: Integer,
-    patch: Patch
-) -> Grid:
+def fill(grid, value, patch):
     """ fill value at indices """
     h, w = len(grid), len(grid[0])
     grid_filled = list(list(row) for row in grid)
@@ -1787,3 +1672,201 @@ def vperiod(
         if pruned.issubset(normalized):
             return p
     return h
+
+def set_fg_color(grid, color):
+    px_indices = difference(asindices(grid), ofcolor(grid, 0))
+
+    return fill(grid, color, px_indices)
+
+def color_swap(grid, from_color, to_color):
+    px_indices = ofcolor(grid, from_color)
+
+    return fill(grid, to_color, px_indices)
+
+def cellwiseAND(a, b):
+    """ cellwise match of two grids """
+    h, w = min(len(a), len(b)), min(len(a[0]), len(b[0]))
+    resulting_grid = tuple()
+    for i in range(h):
+        row = tuple()
+        for j in range(w):
+            a_value = a[i][j]
+            b_value = b[i][j]
+            value = 0
+            if a_value != 0 and b_value != 0:
+                value = a_value
+            row = row + (value,)
+        resulting_grid = resulting_grid + (row, )
+    return resulting_grid
+
+def cellwiseXOR(a, b):
+    """ cellwise match of two grids """
+    h, w = min(len(a), len(b)), min(len(a[0]), len(b[0]))
+    resulting_grid = tuple()
+    for i in range(h):
+        row = tuple()
+        for j in range(w):
+            a_value = a[i][j]
+            b_value = b[i][j]
+            value = 0
+            if a_value != 0 and b_value == 0:
+                value = a_value
+            elif a_value == 0 and b_value != 0:
+                value = b_value
+            row = row + (value,)
+        resulting_grid = resulting_grid + (row, )
+    return resulting_grid
+
+def cellwiseOR(a, b):
+    """ cellwise match of two grids """
+    h, w = min(len(a), len(b)), min(len(a[0]), len(b[0]))
+    resulting_grid = tuple()
+    for i in range(h):
+        row = tuple()
+        for j in range(w):
+            a_value = a[i][j]
+            b_value = b[i][j]
+            if a_value != 0:
+                value = a_value
+            else:
+                value = b_value
+            row = row + (value,)
+        resulting_grid = resulting_grid + (row, )
+    return resulting_grid
+
+def cellwiseDifference(a, b):
+    """ cellwise match of two grids """
+    h, w = min(len(a), len(b)), min(len(a[0]), len(b[0]))
+    resulting_grid = tuple()
+    for i in range(h):
+        row = tuple()
+        for j in range(w):
+            a_value = a[i][j]
+            b_value = b[i][j]
+            value = 0
+            if a_value != 0 and b_value == 0:
+                value = a_value
+            row = row + (value,)
+        resulting_grid = resulting_grid + (row, )
+    return resulting_grid
+
+semantics = {
+    'cellwiseOR': lambda g1: lambda g2: cellwiseOR(g1, g2),
+    'cellwiseXOR': lambda g1: lambda g2: cellwiseXOR(g1, g2),
+    'cellwiseAND': lambda g1: lambda g2: cellwiseAND(g1, g2),
+    'cellwiseDifference': lambda g1: lambda g2: cellwiseDifference(g1, g2),
+    'set_fg_color': lambda g: lambda c: set_fg_color(g, c),
+    'color_swap': lambda g: lambda c1: lambda c2: color_swap(g, c1, c2),
+    'duo_wheel': lambda g: duo_wheel(g),
+    'quad_wheel': lambda g: quad_wheel(g),
+    'clear_single_colors': lambda g: clear_single_colors(g),
+    'clear_double_colors': lambda g: clear_double_colors(g),
+    'clear_triple_colors': lambda g: clear_triple_colors(g),
+    'drag_down_underpaint': lambda g: drag_down_underpaint(g),
+    'drag_down_paint': lambda g: drag_down_paint(g),
+    'drag_left_underpaint': lambda g: drag_left_underpaint(g),
+    'drag_left_paint': lambda g: drag_left_paint(g),
+    'drag_up_underpaint': lambda g: drag_up_underpaint(g),
+    'drag_up_paint': lambda g: drag_up_paint(g),
+    'drag_right_underpaint': lambda g: drag_right_underpaint(g),
+    'drag_right_paint': lambda g: drag_right_paint(g),
+    'drag_diagonally_underpaint': lambda g: drag_diagonally_underpaint(g),
+    'drag_diagonally_paint': lambda g: drag_diagonally_paint(g),
+    'drag_counterdiagonally_underpaint': lambda g: drag_counterdiagonally_underpaint(g),
+    'drag_counterdiagonally_paint': lambda g: drag_counterdiagonally_paint(g),
+    'extend_by_one': lambda g: extend_by_one(g),
+    'extend_by_two': lambda g: extend_by_two(g),
+    'insert_top_row': lambda g: insert_top_row(g),
+    'insert_bottom_row': lambda g: insert_bottom_row(g),
+    'insert_left_col': lambda g: insert_left_col(g),
+    'insert_right_col': lambda g: insert_right_col(g),
+    'stack_rows_horizontally': lambda g: stack_rows_horizontally(g),
+    'stack_rows_vertically': lambda g: stack_rows_vertically(g),
+    'stack_rows_horizontally_compress': lambda g: stack_rows_horizontally_compress(g),
+    'stack_columns_vertically_compress': lambda g: stack_columns_vertically_compress(g),
+    'insert_cross': lambda g: insert_cross(g),
+    'insert_large_cross': lambda g: insert_large_cross(g),
+    'symmetrize_left_around_vertical': lambda g: symmetrize_left_around_vertical(g),
+    'symmetrize_right_around_vertical': lambda g: symmetrize_right_around_vertical(g),
+    'symmetrize_top_around_horizontal': lambda g: symmetrize_top_around_horizontal(g),
+    'symmetrize_bottom_around_horizontal': lambda g: symmetrize_bottom_around_horizontal(g),
+    'symmetrize_quad': lambda g: symmetrize_quad(g),
+    'keep_only_diagonal': lambda g: keep_only_diagonal(g),
+    'shear_rows_left': lambda g: shear_rows_left(g),
+    'shear_rows_right': lambda g: shear_rows_right(g),
+    'shear_cols_down': lambda g: shear_cols_down(g),
+    'shear_cols_up': lambda g: shear_cols_up(g),
+    'upscale_horizontal_by_two': lambda g: upscale_horizontal_by_two(g),
+    'upscale_vertical_by_two': lambda g: upscale_vertical_by_two(g),
+    'upscale_horizontal_by_three': lambda g: upscale_horizontal_by_three(g),
+    'upscale_vertical_by_three': lambda g: upscale_vertical_by_three(g),
+    'upscale_by_two': lambda g: upscale_by_two(g),
+    'upscale_by_three': lambda g: upscale_by_three(g),
+    'clear_outline': lambda g: clear_outline(g),
+    'clear_all_but_outline': lambda g: clear_all_but_outline(g),
+    'clear_top_row': lambda g: clear_top_row(g),
+    'clear_bottom_row': lambda g: clear_bottom_row(g),
+    'clear_left_column': lambda g: clear_left_column(g),
+    'clear_right_column': lambda g: clear_right_column(g),
+    'clear_diagonal': lambda g: clear_diagonal(g),
+    'clear_counterdiagonal': lambda g: clear_counterdiagonal(g),
+    'rep_first_row': lambda g: rep_first_row(g),
+    'rep_last_row': lambda g: rep_last_row(g),
+    'rep_first_col': lambda g: rep_first_col(g),
+    'rep_last_col': lambda g: rep_last_col(g),
+    'remove_top_row': lambda g: remove_top_row(g),
+    'remove_bottom_row': lambda g: remove_bottom_row(g),
+    'remove_left_column': lambda g: remove_left_column(g),
+    'remove_right_column': lambda g: remove_right_column(g),
+    'inner_columns': lambda g: inner_columns(g),
+    'inner_rows': lambda g: inner_rows(g),
+    'gravitate_right': lambda g: gravitate_right(g),
+    'gravitate_left': lambda g: gravitate_left(g),
+    'gravitate_up': lambda g: gravitate_up(g),
+    'gravitate_down': lambda g: gravitate_down(g),
+    'gravitate_left_right': lambda g: gravitate_left_right(g),
+    'gravitate_top_down': lambda g: gravitate_top_down(g),
+    'wrap_left': lambda g: wrap_left(g),
+    'wrap_right': lambda g: wrap_right(g),
+    'wrap_up': lambda g: wrap_up(g),
+    'wrap_down': lambda g: wrap_down(g),
+    'outer_columns': lambda g: outer_columns(g),
+    'outer_rows': lambda g: outer_rows(g),
+    'left_column': lambda g: left_column(g),
+    'right_column': lambda g: right_column(g),
+    'top_row': lambda g: top_row(g),
+    'bottom_row': lambda g: bottom_row(g),
+    'first_quadrant': lambda g: first_quadrant(g),
+    'second_quadrant': lambda g: first_quadrant(g),
+    'third_quadrant': lambda g: first_quadrant(g),
+    'fourth_quadrant': lambda g: first_quadrant(g),
+    'compress': lambda g: compress(g),
+    'trim': lambda g: trim(g),
+    'vmirror': lambda g: vmirror(g),
+    'hmirror': lambda g: hmirror(g),
+    'dmirror': lambda g: dmirror(g),
+    'cmirror': lambda g: cmirror(g),
+    'hconcat': lambda g1: lambda g2: hconcat(g1, g2),
+    'vconcat': lambda g1: lambda g2: vconcat(g1, g2),
+    'rot90': lambda g: rot90(g),
+    'rot180': lambda g: rot180(g),
+    'rot270': lambda g: rot270(g),
+    'tophalf': lambda g: tophalf(g),
+    'bottomhalf': lambda g: bottomhalf(g),
+    'lefthalf': lambda g: lefthalf(g),
+    'righthalf': lambda g: righthalf(g),
+    'hupscale': lambda g: lambda h: hupscale(g, h),
+    'vupscale': lambda g: lambda h: vupscale(g, h),
+    '0': 0,
+    '1': 1,
+    '2': 2,
+    '3': 3,
+    '4': 4,
+    '5': 5,
+    '6': 6,
+    '7': 7,
+    '8': 8,
+    '9': 9
+}
+
+type_request = Arrow(Grid, Grid)
