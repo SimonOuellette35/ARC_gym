@@ -1,5 +1,5 @@
 from ARC_gym.MetaDGP import MetaDGP
-from ARC_gym.utils.batching import make_mlc_batch
+from ARC_gym.utils.batching import make_gridcoder_batch
 from torch.utils.data import DataLoader
 import ARC_gym.utils.metrics as metrics
 import ARC_gym.utils.visualization as viz
@@ -53,13 +53,12 @@ meta_train_dataset, meta_test_dataset, meta_train_tasks, meta_test_tasks = dgp.i
 
 meta_train_dataloader = DataLoader( meta_train_dataset,
                                     batch_size=train_batch_size,
-                                    collate_fn=lambda x:make_mlc_batch(x), # This will generate "in-context learning"
-                                                                            # type of sequences to use in a seq-to-seq
-                                                                            # model such as a Transformer, for example.
+                                    collate_fn=lambda x:make_gridcoder_batch(x),
                                     shuffle=False)
+
 meta_test_dataloader = DataLoader(  meta_test_dataset,
                                     batch_size=test_batch_size,
-                                    collate_fn=lambda x:make_mlc_batch(x),
+                                    collate_fn=lambda x:make_gridcoder_batch(x),
                                     shuffle=False)
 
 # Measure to which extent the meta-dataset is out-of-distribution. Here we expect an ODDness of 1 due to how the
@@ -70,17 +69,41 @@ OODness = metrics.quantify_comp_graph_OOD(meta_train_dataset, meta_train_tasks,
 
 print("==> Meta-dataset OODness = ", OODness)
 
-# Optionally: visualize the generated tasks.
-#viz.draw_batch(meta_train_dataloader, 5, 4)
-viz.draw_batch(meta_train_dataset[0], 5, 4)
-
-# The main training/evaluation loop. Insert your algorithm here.
-NUM_EPOCHS = 10
-for epoch in range(NUM_EPOCHS):
-    print("==> Epoch #%i" % epoch)
+# The main training loop. Insert your algorithm here.
+NUM_TRAIN_ITERS = 1
+for _ in range(NUM_TRAIN_ITERS):
     for batch_idx, train_batch in enumerate(meta_train_dataloader):
-        print("Train batch input sequences shape: ", train_batch['xq+xs+ys_padded'].shape)
-        print("First batch sample has input sequence: ", train_batch['xq+xs+ys_padded'][0].cpu().data.numpy())
+        # train_batch from make_gridcoder_batch() is a dictionary that contains:
+        # 'xs': tensor of shape [batch_size, number of examples per task, GRID_DIM*GRID_DIM] the input grids of the demonstrations
+        # 'ys': tensor of shape [batch_size, number of examples per task, GRID_DIM*GRID_DIM] the output grids of the demonstrations
+        # 'xq': tensor of shape [batchsize, GRID_DIM*GRID_DIM] the input grid for the test pair.
+        # 'yq': tensor of shape [batchsize, GRID_DIM*GRID_DIM] the output grid for the test pair.
+        # 'task_desc': list of verbal task descriptions for each task
 
-        print("First batch sample has target sequence: ", train_batch['yq_padded'][0].cpu().data.numpy())
-        # TODO: your model training/evaluation/etc.
+        # visualize examples for the first batch item.
+        K = train_batch['xs'].shape[1]
+        print("==> Drawing %i example pairs of first batch element of batch %i" % (K, batch_idx))
+        print("Task description: ", train_batch['task_desc'][0])
+        for k in range(K):
+            tuple_grid_x = np.reshape(train_batch['xs'][0][k].cpu().data.numpy(), [GRID_DIM, GRID_DIM])
+            tuple_grid_y = np.reshape(train_batch['ys'][0][k].cpu().data.numpy(), [GRID_DIM, GRID_DIM])
+
+
+            viz.draw_grid_pair(tuple_grid_x, tuple_grid_y)
+
+        # TODO: your model training steps...
+
+# Model evaluation
+for batch_idx, test_batch in enumerate(meta_test_dataloader):
+    # visualize examples for the first batch item.
+    K = test_batch['xs'].shape[1]
+    print("==> Drawing %i example pairs of first batch element of batch %i" % (K, batch_idx))
+    print("Task description: ", test_batch['task_desc'][0])
+    for k in range(K):
+        tuple_grid_x = np.reshape(test_batch['xs'][0][k].cpu().data.numpy(), [GRID_DIM, GRID_DIM])
+        tuple_grid_y = np.reshape(test_batch['ys'][0][k].cpu().data.numpy(), [GRID_DIM, GRID_DIM])
+
+
+        viz.draw_grid_pair(tuple_grid_x, tuple_grid_y)
+
+    # TODO: your model evaluation steps...

@@ -85,7 +85,7 @@ class MetaDGP:
 
         count = 0
         generated_graphs = graphUtils.generate_all_directed_graphs(len(modules), metadata, max_graphs)
-        print("==> Length of generated graphs = ", len(generated_graphs))
+        print("==> Number of generated graphs (tasks) = ", len(generated_graphs))
 
         for graph in generated_graphs:
             ts = graphUtils.generate_topological_sorts(graph)[0]

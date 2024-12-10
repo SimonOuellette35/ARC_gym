@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 
+# This creates batches in a format for the MLC experiments.
+# These are related to https://github.com/SimonOuellette35/MLC-ARC_gym.
 def make_mlc_batch(batch, ITEM_token=11, IOSEP_token=12, k=5):
 
     batch_size = len(batch)
@@ -65,8 +67,8 @@ def make_gridcoder_batch(batch):
     mybatch['unrolled_adj_mat'] = []
 
     for task_idx in range(batch_size):
-        mybatch['xq'].append(torch.from_numpy(np.reshape(batch[task_idx]['xq'], [-1])))
-        mybatch['yq'].append(torch.from_numpy(np.reshape(batch[task_idx]['yq'], [-1])))
+        mybatch['xq'].append(torch.from_numpy(np.reshape(batch[task_idx]['xq'], [k, -1])))
+        mybatch['yq'].append(torch.from_numpy(np.reshape(batch[task_idx]['yq'], [k, -1])))
         mybatch['xs'].append(torch.from_numpy(np.reshape(batch[task_idx]['xs'], [k, -1])))
         mybatch['ys'].append(torch.from_numpy(np.reshape(batch[task_idx]['ys'], [k, -1])))
 
@@ -76,8 +78,8 @@ def make_gridcoder_batch(batch):
         if 'unrolled_adj_mat' in batch[task_idx]:
             mybatch['unrolled_adj_mat'].append(batch[task_idx]['unrolled_adj_mat'])
 
-    mybatch['xq'] = torch.stack(mybatch['xq'], dim=0)
-    mybatch['yq'] = torch.stack(mybatch['yq'], dim=0)
+    mybatch['xq'] = torch.stack(mybatch['xq'], dim=0)[:, 0, :]
+    mybatch['yq'] = torch.stack(mybatch['yq'], dim=0)[:, 0, :]
     mybatch['xs'] = torch.stack(mybatch['xs'], dim=0)
     mybatch['ys'] = torch.stack(mybatch['ys'], dim=0)
 
