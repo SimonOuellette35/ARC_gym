@@ -36,7 +36,7 @@ def quantify_comp_graph_OOD(train_dataset, train_task, test_dataset, test_task, 
 
             # If there is any training task for which we get an exact match on outputs (given the same inputs),
             # it is for all intents and purposes the same task -- so we have an overlap between training and test tasks.
-            if exact_match(train_y, test_y):
+            if exact_match(train_y, test_y):                
                 oodness -= 1
                 break
 

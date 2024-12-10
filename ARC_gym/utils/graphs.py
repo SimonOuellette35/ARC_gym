@@ -6,7 +6,7 @@ import copy
 from tqdm import tqdm
 
 
-def generate_all_directed_graphs(num_modules, metadata, max_graphs, use_tqdm=True, shuffle=True, branching_factor=1):
+def generate_all_directed_graphs(num_modules, metadata, max_graphs, use_tqdm=True, shuffle=True):
 
     generated_graphs = []
     nodes = np.arange(1, num_modules+1)
@@ -58,87 +58,6 @@ def generate_all_directed_graphs(num_modules, metadata, max_graphs, use_tqdm=Tru
         progress_bar.close()
 
     return generated_graphs
-
-
-# TODO: add branching factor to the graph metadata
-def generate_all_directed_graphs_full(num_modules, metadata, max_graphs, use_tqdm=True, shuffle=True, branching_factor=1):
-    generated_graphs = []
-    counter = 0
-    nodes = np.arange(1, num_modules+1)
-
-    if use_tqdm:
-        progress_bar = tqdm(total=max_graphs)
-
-    for r in range(2, len(nodes) + 1):
-        for sub_nodes in itertools.combinations(nodes, r):
-
-            # Ensure both the start and end nodes are in the subset
-            if nodes[0] not in sub_nodes or nodes[-1] not in sub_nodes:
-                continue
-
-            if len(sub_nodes) < metadata['num_nodes'][0] or len(sub_nodes) > metadata['num_nodes'][1]:
-                continue
-
-            possible_edges = list(itertools.permutations(sub_nodes, 2))
-
-            G = nx.DiGraph()
-            G.add_nodes_from(sub_nodes)
-
-            for num_edges in range(1, len(possible_edges) + 1):
-                for subset in itertools.combinations(possible_edges, num_edges):
-                    G.clear_edges()
-                    G.add_edges_from(subset)
-
-                    # node 0 must be the starting point, and the last node must be the terminal node of the graph
-                    if G.in_degree(nodes[0]) != 0 or G.out_degree(nodes[-1]) != 0 or G.in_degree(nodes[-1]) != 1 or G.out_degree(nodes[0]) == 0:
-                        continue
-
-                    if not all(G.in_degree(node) > 0 for node in G if node != nodes[0] and G.out_degree(node) > 0):
-                        continue
-
-                    # rule out cycles
-                    if not nx.is_directed_acyclic_graph(G):
-                        continue
-
-                    # For every node, if it can be reached from the start node, check if the last node can be reached from it
-                    if not all(nx.has_path(G, node, nodes[-1]) for node in G if nx.has_path(G, nodes[0], node)):
-                        continue
-
-                    # Check if the graph is weakly connected: don't allow disconnected subgraphs
-                    if not nx.is_connected(G.to_undirected()):
-                        continue
-
-                    # Check for maximum branching factor
-                    if any(G.out_degree(node) > branching_factor for node in G):
-                        continue
-
-                    generated_graphs.append(copy.deepcopy(G))
-
-                    if use_tqdm:
-                        progress_bar.update(1)
-                    counter += 1
-                    if len(generated_graphs) >= max_graphs:
-                        if shuffle:
-                            random.shuffle(generated_graphs)
-                        if use_tqdm:
-                            progress_bar.close()
-                        return generated_graphs
-
-    if shuffle:
-        random.shuffle(generated_graphs)
-    if use_tqdm:
-        progress_bar.close()
-    return generated_graphs
-
-def get_unrolled_adj_mat(ts, num_modules):
-    unrolled_adj_mat = []
-    for edge in ts:
-        current_adj_mat = np.zeros((num_modules, num_modules))
-        current_adj_mat[edge[0]-1, edge[1]-1] = 1.
-
-        unrolled_adj_mat.append(current_adj_mat)
-
-    return np.array(unrolled_adj_mat)
 
 def get_desc(ts, modules):
     desc = ''
@@ -215,55 +134,6 @@ def executeCompGraph(G, input, modules):
 
     return results[-1]
 
-# This is a variant of executeCompGraph that doesn't expect topological sort as input, it generates it internally.
-# Since ARC_gym combines merged outputs in a way that is order-invariant, all topological sorts of a graph can
-# be considered equivalent, so we can just generate one on the fly here and use it.
-def execute_comp_graph_v2(graph, input, modules):
-
-    nodes = list(graph.nodes)
-
-    toposort = list(nx.topological_sort(nx.line_graph(graph)))
-
-    results = [None] * (len(modules) - 1)
-    results[0] = [input]
-
-    def execute(n, inp_params):
-        model = modules[n - 1]['model']
-        if len(inp_params) == 1:
-            if model is None:
-                return inp_params[0]
-
-            #print("Calling module %s" % (modules[n - 1]['name']))
-            return model(inp_params[0])
-        else:
-            output_grid = np.zeros_like(inp_params[0])
-            for inp in inp_params:
-                output_grid += inp
-
-            sum_inp = output_grid % 10
-            if model is None:
-                return sum_inp
-
-            #print("Calling module %s" % (modules[n-1]['name']))
-            return model(sum_inp)
-
-    for edge in toposort:
-        #print("==> edge = ", edge)
-        inp_params = results[edge[0]-1]
-
-        to_node = edge[1]
-
-        tmp_out = execute(to_node, inp_params)
-        if to_node == nodes[-1]:
-            return tmp_out
-
-        if results[to_node - 1] is None:
-            results[to_node - 1] = [tmp_out]
-        else:
-            # A concatenation is happening
-            results[to_node - 1].append(tmp_out)
-
-    return results[-1]
 
 def get_concatenation_points(graph):
     # 1) get the adjacency matrix, identify concatenation points.
@@ -339,6 +209,3 @@ def generate_topological_sorts(graph):
         toposort_variants = np.concatenate((toposort_variants, tmp_variants))
 
     return toposort_variants
-
-def test():
-    print("It works.")

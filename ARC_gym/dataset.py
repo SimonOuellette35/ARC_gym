@@ -5,8 +5,9 @@ import re
 import numpy as np
 import os,json
 import random
+import ARC_gym.Hodel_primitives as Hodel
+import math
 
-from ARC_gym.Hodel_primitives import *
 
 # Define a color map
 COLOR_MAP = {
@@ -258,7 +259,6 @@ class ARCGymVariableDatasetV2(Dataset):
 
         return X, out_y, A, H, desc
 
-    # TODO: use similar logic to similarity dataset? Use a common utility function that generates tasks?
     def sample_transform(self):
         X, Y, A, H, desc = self.generate_random_task()
 

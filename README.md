@@ -4,11 +4,12 @@
 ###### Introduction & Motivation
 
 The ARC gym is a data generation framework to help research & develop a solution to the problems of compositional generalization and efficient search,
-which are sub-problems of the ARC challenge itself. By using a fixed, pre-determined number of primitives (which can
-be set in the file _primitives.py_), we set aside the problem of identifying the core skills. Thus, the ARC gym is 
-intentionally much simpler than the ARC challenge, allowing us to focus on the two difficult challenges of:
+which are sub-problems of the ARC challenge itself. By using a fixed, pre-determined number of primitives (which can be set in the file _primitives.py_),
+we set aside the problem of identifying the core skills. Thus, the ARC gym is intentionally much simpler than the ARC challenge, allowing us to focus on
+the two difficult challenges of:
 
 1. Compositional generalization: how do we build an algorithm that is able to learn "core skills" and re-combine them to few-shot learn new tasks, especially ones that are out-of-distribution with respect to the training set? i.e. how can we learn to solve novel tasks by merely re-combining modular knowledge?
+
 2. Efficient search: when the number of primitives and/or the complexity of the tasks is especially high, searching over the space of possible solutions can be prohibitively slow. How do we build algorithms that possess a strong "intuition", capable of efficiently reducing the search space?
 
 ###### Getting started
@@ -24,6 +25,12 @@ Then pip install it:
 
 ```
 pip install -e .
+```
+
+Additionally, you may need to run:
+
+```
+pip install -r requirements.txt
 ```
 
 The quickest way to get started is to start from _example.py_, and to modify it according to your specifications. Read the following sections to better understand how to customize the script.

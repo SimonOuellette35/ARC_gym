@@ -48,8 +48,8 @@ class MetaDGP:
         ]
         for p in self.primitives:
             self.modules.append({
-                'model': p[0],
-                'name': p[1],
+                'model': p[1],
+                'name': p[0],
                 'inputEmbDim': 10,
                 'outputEmbDim': 10,
                 'inputType': 'token',

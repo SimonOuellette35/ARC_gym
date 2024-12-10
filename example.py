@@ -1,5 +1,5 @@
 from ARC_gym.MetaDGP import MetaDGP
-from ARC_gym.utils.batching import make_biml_batch
+from ARC_gym.utils.batching import make_mlc_batch
 from torch.utils.data import DataLoader
 import ARC_gym.utils.metrics as metrics
 import ARC_gym.utils.visualization as viz
@@ -12,6 +12,10 @@ NUM_TEST_TASKS = 10
 MAX_GRAPHS = 250
 GRID_DIM = 6
 
+# Here you control the "out-of-distributionness" of the test set w.r.t to the training set, based on the number of
+# primitives used to compose the tasks. In the test set, here we generate tasks of 5 to 6 primitives, while in the
+# training set we generate tasks of 3 to 4 primitives. This "guarantees" that test tasks will be structurally 
+# distinct from the training tasks. You can change that to have a partial, or even total overlap.
 comp_graph_dist = {
     'train': {
         'num_nodes': [3, 4]
@@ -21,6 +25,9 @@ comp_graph_dist = {
     }
 }
 
+# This controls the distribution of the randomly generated grids for training and test. Here, we pick the same
+# distribution. But you can change the range of generated pixels per grid, and even the spatial distribution
+# of those pixels (probabilistically).
 grid_dist = {
     'train': {
         'num_pixels': [1, 5],
@@ -46,17 +53,18 @@ meta_train_dataset, meta_test_dataset, meta_train_tasks, meta_test_tasks = dgp.i
 
 meta_train_dataloader = DataLoader( meta_train_dataset,
                                     batch_size=train_batch_size,
-                                    collate_fn=lambda x:make_biml_batch(x), # This will generate "in-context learning"
+                                    collate_fn=lambda x:make_mlc_batch(x), # This will generate "in-context learning"
                                                                             # type of sequences to use in a seq-to-seq
                                                                             # model such as a Transformer, for example.
                                     shuffle=False)
 meta_test_dataloader = DataLoader(  meta_test_dataset,
                                     batch_size=test_batch_size,
-                                    collate_fn=lambda x:make_biml_batch(x),
+                                    collate_fn=lambda x:make_mlc_batch(x),
                                     shuffle=False)
 
 # Measure to which extent the meta-dataset is out-of-distribution. Here we expect an ODDness of 1 due to how the
-# computational graph characteristics have been selected.
+# computational graph characteristics have been selected. That is, the test set is entirely out-of-distribution w.r.t
+# the training set.
 OODness = metrics.quantify_comp_graph_OOD(meta_train_dataset, meta_train_tasks,
                                           meta_test_dataset, meta_test_tasks, dgp.modules)
 
@@ -64,7 +72,7 @@ print("==> Meta-dataset OODness = ", OODness)
 
 # Optionally: visualize the generated tasks.
 #viz.draw_batch(meta_train_dataloader, 5, 4)
-viz.draw_batch(meta_train_dataset, 5, 4)
+viz.draw_batch(meta_train_dataset[0], 5, 4)
 
 # The main training/evaluation loop. Insert your algorithm here.
 NUM_EPOCHS = 10
