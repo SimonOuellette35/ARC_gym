@@ -1,22 +1,9 @@
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-import torch        # TODO: support JAX models? Keras?
 
 
 class Experiment:
 
-    # Note: the expected format of output for the batching_func is:
-    # Each batch element is a dictionary:
-    # 'xs': tensor of shape [batch_size, number of examples per task, GRID_DIM*GRID_DIM] the input grids of the demonstrations
-    # 'ys': tensor of shape [batch_size, number of examples per task, GRID_DIM*GRID_DIM] the output grids of the demonstrations
-    # 'xq': tensor of shape [batchsize, GRID_DIM*GRID_DIM] the input grid for the test pair.
-    # 'yq': tensor of shape [batchsize, GRID_DIM*GRID_DIM] the output grid for the test pair.
-    # 'label_seq' [Optional]: if a program induction task, this is the expected program solution as a token sequence.
-    # 'task_desc': list of verbal task descriptions for each task
-
-    # Note: the model must implement its own train_batch function that handles the specificities (e.g. the loss function, etc.).
-    # Similarly, it needs a test_batch function that outputs an accuracy on the batch. This will probably require a wrapper to the
-    # original model code.
     def __init__(self, exp_mode, model, data_generator, batching_func, num_epochs=1000, train_batch_size=1000, val_batch_size=100):
         '''
         Parameters:
@@ -64,13 +51,12 @@ class Experiment:
             val_batch_count = 0.
             for batch_idx, val_batch in enumerate(val_dataloader):
 
-                with torch.no_grad():
-                    if self.exp_mode == 'induction':
-                        val_loss = self.model.train_batch(val_batch['xs'], val_batch['ys'], training=False)
-                        val_accuracy = self.model.test_batch(val_batch['xs'], val_batch['ys'])
-                    else:
-                        val_loss = self.model.train_batch(val_batch['xs'], training=False)
-                        val_accuracy = self.model.test_batch(val_batch['xs'])
+                if self.exp_mode == 'induction':
+                    val_loss = self.model.train_batch(val_batch['xs'], val_batch['ys'], training=False)
+                    val_accuracy = self.model.test_batch(val_batch['xs'], val_batch['ys'])
+                else:
+                    val_loss = self.model.train_batch(val_batch['xs'], training=False)
+                    val_accuracy = self.model.test_batch(val_batch['xs'])
 
                 global_val_loss += val_loss.cpu().data.numpy()
                 global_val_accuracy += val_accuracy
