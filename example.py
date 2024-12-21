@@ -53,12 +53,12 @@ meta_train_dataset, meta_test_dataset, meta_train_tasks, meta_test_tasks = dgp.i
 
 meta_train_dataloader = DataLoader( meta_train_dataset,
                                     batch_size=train_batch_size,
-                                    collate_fn=lambda x:make_gridcoder_batch(x),
+                                    collate_fn=lambda x:make_gridcoder_batch(x, num_test_samples=5),
                                     shuffle=False)
 
 meta_test_dataloader = DataLoader(  meta_test_dataset,
                                     batch_size=test_batch_size,
-                                    collate_fn=lambda x:make_gridcoder_batch(x),
+                                    collate_fn=lambda x:make_gridcoder_batch(x, num_test_samples=5),
                                     shuffle=False)
 
 # Measure to which extent the meta-dataset is out-of-distribution. Here we expect an ODDness of 1 due to how the
