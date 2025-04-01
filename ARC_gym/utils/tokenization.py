@@ -84,9 +84,9 @@ def detokenize_grid_unpadded(a):
     '''
     This function assumes the input sequence a is a token sequence representing a grid.
     The format of the sequence is as follows:
-        - 0:
-        - 1:
-        - 2:
+        - 0: padding tokens
+        - 1: new row
+        - 2: end of grid
         - 3 to 12: colors 0 to 9 inclusively.
 
     It dynamically determines the dimensions of the grid from the above, and outputs a numpy
