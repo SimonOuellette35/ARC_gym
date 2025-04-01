@@ -81,6 +81,18 @@ def detokenize_grid_padded(a, assume_max_grid):
     return padded_2d_grid
 
 def detokenize_grid_unpadded(a):
+    '''
+    This function assumes the input sequence a is a token sequence representing a grid.
+    The format of the sequence is as follows:
+        - 0:
+        - 1:
+        - 2:
+        - 3 to 12: colors 0 to 9 inclusively.
+
+    It dynamically determines the dimensions of the grid from the above, and outputs a numpy
+    array of shape (N, M) where N is the number of rows and M the number of columns, and the
+    elements of this 2D array are the integers 0 to 9 representing the pixel colors.
+    '''
     grid = []
     row = []
     x = 0
