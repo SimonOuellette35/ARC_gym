@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import ARC_gym.dataset as dataset
-import torch
 import numpy as np
 
 def draw_dataset(data_loader, num_examples, k, grid_size=5):
