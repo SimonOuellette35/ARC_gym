@@ -1,5 +1,3 @@
 numpy
 matplotlib
-torch
-networkx
 tqdm
