@@ -26,7 +26,7 @@ class GridSampler:
         self.training_grids = []
         self.load_training_grids()
 
-    def uniform_random_sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False):
+    def uniform_random_sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         '''
         Parameters:
             @param force_square: True to force the generated to be square. Can be useful for some types of tasks where
@@ -71,7 +71,7 @@ class GridSampler:
         nonzero_indices = np.random.choice(num_rows * num_cols, size=num_fg_px, replace=False)
         nonzero_positions = np.unravel_index(nonzero_indices, (num_rows, num_cols))
 
-        if grid_type < 0.2:
+        if grid_type < 0.2 and monochrome_grid_ok:
             # monochrome grid
 
             # Choose a random color different from the background color    
@@ -299,7 +299,7 @@ class GridSampler:
 
         return grid
 
-    def training_set_crop(self, min_dim=None, max_dim=None, force_square=False):
+    def training_set_crop(self, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         '''
         Parameters:
             @param force_square: True to force the generated to be square. Can be useful for some types of tasks where
@@ -334,10 +334,6 @@ class GridSampler:
                 num_cols = np.random.randint(min_dim, max_dim + 1)
                 num_cols = min(num_cols, grid.shape[1])
 
-            print("grid.shape[0] = ", grid.shape[0])
-            print("grid.shape[1] = ", grid.shape[1])
-            print("num_cols = ", num_cols)
-            print("num_rows = ", num_rows)
             i = np.random.randint(0, (grid.shape[0] - num_rows) + 1)
             j = np.random.randint(0, (grid.shape[1] - num_cols) + 1)
 
@@ -347,18 +343,21 @@ class GridSampler:
             if np.all(grid_sample == grid_sample[0,0]):
                 continue
 
+            if not monochrome_grid_ok:
+                if len(np.unique(grid_sample)) <= 2:
+                    continue
+
             valid_sample = True
 
         # add data augmentation
         return self.augment(grid_sample)
 
 
-    def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False):
+    def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()
 
         if rnd < self.grid_type_ratio:
-            return self.uniform_random_sample(bg_color, min_dim, max_dim, force_square)
-        
+            return self.uniform_random_sample(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
         else:
             # TODO: eventually enforce bg_color here by selecting carefully.
-            return self.training_set_crop(min_dim, max_dim, force_square)
+            return self.training_set_crop(min_dim, max_dim, force_square, monochrome_grid_ok)
