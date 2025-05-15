@@ -299,7 +299,7 @@ class GridSampler:
 
         return grid
 
-    def training_set_crop(self, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
+    def training_set_crop(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         '''
         Parameters:
             @param force_square: True to force the generated to be square. Can be useful for some types of tasks where
@@ -347,6 +347,10 @@ class GridSampler:
                 if len(np.unique(grid_sample)) <= 2:
                     continue
 
+            if bg_color is not None:
+                if bg_color not in np.unique(grid_sample):
+                    continue
+
             valid_sample = True
 
         # add data augmentation
@@ -359,5 +363,4 @@ class GridSampler:
         if rnd < self.grid_type_ratio:
             return self.uniform_random_sample(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
         else:
-            # TODO: eventually enforce bg_color here by selecting carefully.
-            return self.training_set_crop(min_dim, max_dim, force_square, monochrome_grid_ok)
+            return self.training_set_crop(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
