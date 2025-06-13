@@ -36,72 +36,74 @@ class GridSampler:
             @param bg_color: If bg_color is set, will use that color for the grid background. Otherwise, will randomize
                              with higher probability of zero than the other colors (see self.black_bg_prob parameter.)
         '''
-        if min_dim is None:
-            min_dim = self.min_dim
+        while True:  # Keep trying until we get a non-uniform grid
+            if min_dim is None:
+                min_dim = self.min_dim
 
-        if max_dim is None:
-            max_dim = self.max_dim
+            if max_dim is None:
+                max_dim = self.max_dim
 
-        num_rows = np.random.randint(min_dim, max_dim + 1)
+            num_rows = np.random.randint(min_dim, max_dim + 1)
 
-        if force_square:
-            num_cols = num_rows
-        else:
-            num_cols = np.random.randint(min_dim, max_dim + 1)
-
-        if bg_color is None:
-            rnd = np.random.uniform()
-            if rnd < self.black_bg_prob:
-                bg_color = np.random.choice(np.arange(1, 10))
+            if force_square:
+                num_cols = num_rows
             else:
-                bg_color = 0
+                num_cols = np.random.randint(min_dim, max_dim + 1)
 
-        grid = np.ones((num_rows, num_cols), dtype=np.int8) * bg_color
+            if bg_color is None:
+                rnd = np.random.uniform()
+                if rnd < self.black_bg_prob:
+                    bg_color = np.random.choice(np.arange(1, 10))
+                else:
+                    bg_color = 0
 
-        grid_type = np.random.uniform()
+            grid = np.ones((num_rows, num_cols), dtype=np.int8) * bg_color
 
-        available_colors = [c for c in range(10) if c != bg_color]
+            grid_type = np.random.uniform()
 
-        # Randomly choose how many foreground pixels we're going to generate
-        density = np.random.uniform(0.05, 0.3)  # Random density between 5% and 30%        
-        num_fg_px = int(num_rows * num_cols * density)
-        num_fg_px = max(1, min(num_fg_px, num_rows * num_cols - 1))  # Ensure at least 1 and not all positions
+            available_colors = [c for c in range(10) if c != bg_color]
 
-        # Randomly select positions for non-zero values
-        nonzero_indices = np.random.choice(num_rows * num_cols, size=num_fg_px, replace=False)
-        nonzero_positions = np.unravel_index(nonzero_indices, (num_rows, num_cols))
+            # Randomly choose how many foreground pixels we're going to generate
+            density = np.random.uniform(0.05, 0.3)  # Random density between 5% and 30%        
+            num_fg_px = int(num_rows * num_cols * density)
+            num_fg_px = max(1, min(num_fg_px, num_rows * num_cols - 1))  # Ensure at least 1 and not all positions
 
-        if grid_type < 0.2 and monochrome_grid_ok:
-            # monochrome grid
+            # Randomly select positions for non-zero values
+            nonzero_indices = np.random.choice(num_rows * num_cols, size=num_fg_px, replace=False)
+            nonzero_positions = np.unravel_index(nonzero_indices, (num_rows, num_cols))
 
-            # Choose a random color different from the background color    
-            color = np.random.choice(available_colors)
-            
-            # Set the selected positions to the chosen color
-            for i in range(num_fg_px):
-                grid[nonzero_positions[0][i], nonzero_positions[1][i]] = color
+            if grid_type < 0.2 and monochrome_grid_ok:
+                # monochrome grid
+                # Choose a random color different from the background color    
+                color = np.random.choice(available_colors)
                 
-        elif grid_type < 0.75:
-            # Choose 2 to 4 colors different from the background color
-            num_colors = np.random.randint(2, 5)  # Random number between 2 and 4 inclusive
-            colors = np.random.choice(available_colors, size=num_colors, replace=False)
-            
-            # Assign random colors from the selected colors to each non-zero position
-            for i in range(num_fg_px):
-                # Randomly select a color from the chosen colors
-                random_color = np.random.choice(colors)
-                # Set the selected position to the chosen color
-                grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
+                # Set the selected positions to the chosen color
+                for i in range(num_fg_px):
+                    grid[nonzero_positions[0][i], nonzero_positions[1][i]] = color
+                    
+            elif grid_type < 0.75:
+                # Choose 2 to 4 colors different from the background color
+                num_colors = np.random.randint(2, 5)  # Random number between 2 and 4 inclusive
+                colors = np.random.choice(available_colors, size=num_colors, replace=False)
+                
+                # Assign random colors from the selected colors to each non-zero position
+                for i in range(num_fg_px):
+                    # Randomly select a color from the chosen colors
+                    random_color = np.random.choice(colors)
+                    # Set the selected position to the chosen color
+                    grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
 
-        else:
-            # Assign random colors from the selected colors to each non-zero position
-            for i in range(num_fg_px):
-                # Randomly select a color from the chosen colors
-                random_color = np.random.choice(available_colors)
-                # Set the selected position to the chosen color
-                grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
+            else:
+                # Assign random colors from the selected colors to each non-zero position
+                for i in range(num_fg_px):
+                    # Randomly select a color from the chosen colors
+                    random_color = np.random.choice(available_colors)
+                    # Set the selected position to the chosen color
+                    grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
 
-        return grid
+            # Check if the grid is uniform (all pixels are the same color)
+            if not np.all(grid == grid[0,0]):
+                return grid
 
     def arc_to_numpy(self, fpath):
         with open(fpath) as f:
@@ -249,18 +251,18 @@ class GridSampler:
                     elif grid[i][j] == to_color:
                         grid[i][j] = from_color
 
-        # upscale by two (if < 15x15)
-        rnd = np.random.uniform()
-        width = len(grid)
-        height = len(grid[0])
-        if rnd < 0.1 and width < 15 and height < 15:
-            up_idx = np.random.choice(np.arange(3))
-            if up_idx == 0:
-                grid = self.upscale_horizontal(grid)
-            elif up_idx == 1:
-                grid = self.upscale_vertical(grid)
-            else:
-                grid = self.upscale(grid)
+        # # upscale by two (if < 15x15)
+        # rnd = np.random.uniform()
+        # width = len(grid)
+        # height = len(grid[0])
+        # if rnd < 0.1 and width < 15 and height < 15:
+        #     up_idx = np.random.choice(np.arange(3))
+        #     if up_idx == 0:
+        #         grid = self.upscale_horizontal(grid)
+        #     elif up_idx == 1:
+        #         grid = self.upscale_vertical(grid)
+        #     else:
+        #         grid = self.upscale(grid)
 
         # translations (with or without wrapping)
         rnd = np.random.uniform()
