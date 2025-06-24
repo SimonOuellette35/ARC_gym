@@ -12,7 +12,16 @@ COLOR_MAP = {
     6: 'red',
     7: 'salmon',
     8: 'aquamarine',
-    9: 'white'
+    9: 'white',
+    10: 'lightcoral',
+    11: 'brown',
+    12: 'pink',
+    13: 'gray',
+    14: 'navy',
+    15: 'lime',
+    16: 'crimson',
+    17: 'gold',
+    18: 'darkblue'
 }
 
 
