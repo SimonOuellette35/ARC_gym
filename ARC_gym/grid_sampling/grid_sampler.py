@@ -370,6 +370,8 @@ class GridSampler:
             return DCA.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim)
         elif selected_cat == 'distinct_colors_adjacent_empty':
             return DCA.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim)
+        elif selected_cat == 'uniform_rect_noisy_bg':
+            return DCA.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim)
 
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()

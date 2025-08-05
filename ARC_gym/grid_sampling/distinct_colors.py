@@ -469,3 +469,100 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
             break
             
     return grid, object_mask
+
+def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None):
+    if min_dim is None:
+        min_dim = 6
+
+    if max_dim is None:
+        max_dim = 30
+
+    a = np.random.uniform()
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+    
+    # Randomly determine the sparsity: probability that a pixel is colored (not background)
+    sparsity = np.random.uniform(0.25, 1.)  # 25% to 100% of pixels colored
+
+    # For each pixel, with probability=sparsity, assign a random color (0-9)
+    # Otherwise, leave as bg_color (already set)
+    mask = np.random.rand(num_rows, num_cols) < sparsity
+    random_colors = np.random.randint(0, 10, size=(num_rows, num_cols))
+    grid[mask] = random_colors[mask]
+    
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    # Generate 1 to 6 objects
+    num_objects = np.random.randint(1, 7)
+    object_colors = []
+    
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+
+    max_attempts_per_object = 50  # Prevent infinite loops if grid is crowded
+
+    empty = True
+    if np.random.uniform() < 0.5:
+        empty = False
+
+    for obj_idx in range(num_objects):
+        obj_color = object_colors[obj_idx]
+        obj_id = obj_idx + 1  # Object IDs start from 1
+
+        # Generate a rectangle of a uniform, randomly selected color.
+        # 50% chance of empty (border only) or full rectangle.
+        max_obj_height = max(3, num_rows // 3)
+        max_obj_width = max(3, num_cols // 3)
+
+        for _ in range(max_attempts_per_object):
+            obj_height = np.random.randint(3, max_obj_height + 1)
+            obj_width = np.random.randint(3, max_obj_width + 1)
+
+            # Find all possible top-left positions where the rectangle fits
+            possible_rows = num_rows - obj_height + 1
+            possible_cols = num_cols - obj_width + 1
+            if possible_rows <= 0 or possible_cols <= 0:
+                continue  # Object too big for grid
+
+            # Try a random position
+            start_row = np.random.randint(0, possible_rows)
+            start_col = np.random.randint(0, possible_cols)
+
+            # Check for overlap in object_mask
+            region = object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width]
+            if np.any(region != 0):
+                continue  # Overlaps with existing object, try again
+
+            # No overlap, place the object
+            object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+
+            if not empty:
+                # Full rectangle
+                grid[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_color
+            else:
+                # Empty rectangle (border only)
+                # Top and bottom rows
+                grid[start_row, start_col:start_col + obj_width] = obj_color
+                grid[start_row + obj_height - 1, start_col:start_col + obj_width] = obj_color
+                # Left and right columns (excluding corners already set)
+                if obj_height > 2:
+                    grid[start_row + 1:start_row + obj_height - 1, start_col] = obj_color
+                    grid[start_row + 1:start_row + obj_height - 1, start_col + obj_width - 1] = obj_color
+
+            break
+
+    return grid, object_mask
