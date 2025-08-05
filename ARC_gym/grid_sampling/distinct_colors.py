@@ -470,7 +470,7 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
             
     return grid, object_mask
 
-def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None):
+def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empty=False):
     if min_dim is None:
         min_dim = 6
 
@@ -514,10 +514,6 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None):
     object_colors = np.random.choice(available_colors, num_objects, replace=False)
 
     max_attempts_per_object = 50  # Prevent infinite loops if grid is crowded
-
-    empty = True
-    if np.random.uniform() < 0.5:
-        empty = False
 
     for obj_idx in range(num_objects):
         obj_color = object_colors[obj_idx]
