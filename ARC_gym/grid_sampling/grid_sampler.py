@@ -374,7 +374,11 @@ class GridSampler:
             return DCA.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=False)
         elif selected_cat == 'window_noisy_bg':
             return DCA.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=True)
-        
+        elif selected_cat == 'incomplete_rectangles':
+            return DCA.sample_incomplete_rectangles(self.training_path, min_dim, max_dim)
+        elif selected_cat == 'incomplete_rectangles_same_shape':
+            return DCA.sample_incomplete_rectangles(self.training_path, min_dim, max_dim, all_same_shape=True)
+
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()
 

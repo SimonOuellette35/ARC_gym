@@ -33,6 +33,9 @@ def return_training_objects(training_examples, training_path, obj_category):
             possible_grids.append(item["output"])
 
     grid_idx = random.randrange(len(possible_grids))
+    # for gi, gt in enumerate(possible_grids):
+    #     print(f"Grid #{gi}: {gt}")
+
     grid = possible_grids[grid_idx]
     grid = np.array(grid, dtype=np.int8)
 
@@ -263,6 +266,17 @@ def sample_distinct_colors_adjacent_empty_training(training_path):
     ]
 
     return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
+
+def sample_incomplete_rectangles_training(training_path):
+    training_examples = [
+        # simple empty shapes
+        ('60b61512', 0),
+        ('6d75e8bb', 0),
+        ('8fbca751', 0),
+        ('3aa6fb7a', 0)
+    ]
+
+    return return_training_objects(training_examples, training_path, 'incomplete_rectangles')
 
 def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None):
     if min_dim is None:
@@ -561,4 +575,95 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
 
             break
 
+    return grid, object_mask
+
+def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_same_shape=False):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    a = np.random.uniform()
+
+    if a < 0.25:
+        return sample_incomplete_rectangles_training(training_path)
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+    
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    # Generate 1 to 7 objects
+    num_objects = np.random.randint(1, 8)
+    object_colors = []
+    
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+
+    # Rectangle object
+    max_obj_height = max(3, num_rows // 2)
+    max_obj_width = max(3, num_cols // 2)
+
+    if all_same_shape:
+        obj_height = np.random.randint(3, max_obj_height + 1)
+        obj_width = np.random.randint(3, max_obj_width + 1)
+
+    for obj_idx in range(num_objects):
+        obj_color = object_colors[obj_idx]
+        obj_id = obj_idx + 1  # Object IDs start from 1
+
+        if not all_same_shape:
+            obj_height = np.random.randint(3, max_obj_height + 1)
+            obj_width = np.random.randint(3, max_obj_width + 1)
+
+        # Try to find a free spot for this object, up to N attempts
+        found_spot = False
+        max_attempts = 50
+        for _ in range(max_attempts):
+            start_row = np.random.randint(0, num_rows - obj_height + 1)
+            start_col = np.random.randint(0, num_cols - obj_width + 1)
+
+            # Check if this region overlaps with any existing object
+            region = object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width]
+            if np.any(region != 0):
+                continue  # Overlaps, try another position
+
+            # Fill the entire rectangle area with the object color
+            grid[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_color
+
+            # Fill the entire rectangle area in the object mask
+            object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+
+            found_spot = True
+            break  # Successfully placed this object
+
+        # Randomly remove 1 to 50% of the rectangle's pixels (set them back to bg_color)
+        rect_area = obj_height * obj_width
+        num_remove = np.random.randint(1, (rect_area // 2) + 1)
+        # Get all pixel indices in the rectangle
+        rect_indices = [(r, c) for r in range(start_row, start_row + obj_height)
+                               for c in range(start_col, start_col + obj_width)]
+        remove_indices = np.random.choice(len(rect_indices), num_remove, replace=False)
+        for idx in remove_indices:
+            r, c = rect_indices[idx]
+            grid[r, c] = bg_color
+
+        if not found_spot:
+            # No more space for this object, stop placing further objects
+            break
+            
     return grid, object_mask
