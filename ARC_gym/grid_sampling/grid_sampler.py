@@ -380,6 +380,22 @@ class GridSampler:
             return DCA.sample_incomplete_rectangles(self.training_path, min_dim, max_dim, all_same_shape=True)
         elif selected_cat == 'incomplete_pattern_dot_plus':
             return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_plus')
+        elif selected_cat == 'incomplete_pattern_dot_x':
+            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_x')
+        elif selected_cat == 'incomplete_pattern_plus_hollow':
+            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_hollow')
+        elif selected_cat == 'incomplete_pattern_x_hollow':
+            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_hollow')
+        elif selected_cat == 'incomplete_pattern_plus_filled':
+            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_filled')
+        elif selected_cat == 'incomplete_pattern_x_filled':
+            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_filled')
+        elif selected_cat == 'incomplete_pattern_square_hollow':
+            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_hollow')
+        elif selected_cat == 'incomplete_pattern_square_filled':
+            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_filled')
+
+
 
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()

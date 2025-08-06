@@ -592,10 +592,11 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
 
     return grid, object_mask
 
-def get_pattern(bg_color, pattern):
-    def random_removal(pattern, exclude=None):
+def get_pattern(bg_color, pattern, num_patterns):
+
+    def random_removal(pattern_grid, exclude=None):
         px_count = 0
-        for row in pattern:
+        for row in pattern_grid:
             for val in row:
                 if val != bg_color:
                     px_count += 1
@@ -607,7 +608,7 @@ def get_pattern(bg_color, pattern):
 
         # Find all non-bg_color pixel coordinates
         coords = []
-        for i, row in enumerate(pattern):
+        for i, row in enumerate(pattern_grid):
             for j, val in enumerate(row):
                 if val != bg_color:
                     if exclude is not None and (i, j) == tuple(exclude):
@@ -615,13 +616,13 @@ def get_pattern(bg_color, pattern):
                     coords.append((i, j))
 
         if len(coords) == 0 or to_remove == 0:
-            return pattern
+            return pattern_grid
 
         # If to_remove > available, just remove all
         to_remove = min(to_remove, len(coords))
         remove_coords = np.random.choice(len(coords), size=to_remove, replace=False)
         # Make a copy to avoid mutating input
-        new_pattern = [list(r) for r in pattern]
+        new_pattern = [list(r) for r in pattern_grid]
         for idx in remove_coords:
             i, j = coords[idx]
             new_pattern[i][j] = bg_color
@@ -629,119 +630,127 @@ def get_pattern(bg_color, pattern):
         return new_pattern
 
     # dot that gets transformed into a '+'
-    if pattern == 'dot_plus':
-        col = np.random.choice([c for c in range(10) if c != bg_color])
-        pattern = [
-            [bg_color, bg_color, bg_color],
-            [bg_color, col, bg_color],
-            [bg_color, bg_color, bg_color]
-        ]
-        pattern_mask = [
-            [0, 1, 0],
-            [1, 1, 1],
-            [0, 1, 0]
-        ]
-    else:
-        # dot that gets transformed into a 'x'
-        col = np.random.choice([c for c in range(10) if c != bg_color])
-        pattern = [
-            col
-        ]
-        pattern_mask = [
-            [1, 0, 1],
-            [0, 1, 0],
-            [1, 0, 1]
-        ]
+    output_patterns = []
+    output_masks = []
+    for _ in range(num_patterns):
+        if pattern == 'dot_plus':
+            col = np.random.choice([c for c in range(10) if c != bg_color])
+            pattern_grid = [
+                [bg_color, bg_color, bg_color],
+                [bg_color, col, bg_color],
+                [bg_color, bg_color, bg_color]
+            ]
+            pattern_mask = [
+                [0, 1, 0],
+                [1, 1, 1],
+                [0, 1, 0]
+            ]
+        elif pattern == 'dot_x':
+            # dot that gets transformed into a 'x'
+            col = np.random.choice([c for c in range(10) if c != bg_color])
+            pattern_grid = [
+                [bg_color, bg_color, bg_color],
+                [bg_color, col, bg_color],
+                [bg_color, bg_color, bg_color]
+            ]
+            pattern_mask = [
+                [1, 0, 1],
+                [0, 1, 0],
+                [1, 0, 1]
+            ]
+        elif pattern == 'plus_hollow':
+            # empty plus with random removal
+            col = np.random.choice([c for c in range(10) if c != bg_color])
+            pattern_grid = [
+                [bg_color, col, bg_color],
+                [col, bg_color, col],
+                [bg_color, col, bg_color]
+            ]
+            pattern_grid = random_removal(pattern_grid)
+            pattern_mask = [
+                [0, 1, 0],
+                [1, 0, 1],
+                [0, 1, 0]
+            ]
+        elif pattern == 'x_hollow':
+            # empty x with random removal
+            col = np.random.choice([c for c in range(10) if c != bg_color])
+            pattern_grid = [
+                [col, bg_color, col],
+                [bg_color, bg_color, bg_color],
+                [col, bg_color, col]
+            ]
+            pattern_grid = random_removal(pattern_grid)
+            pattern_mask = [
+                [1, 0, 1],
+                [0, 0, 0],
+                [1, 0, 1]
+            ]
+        elif pattern == 'x_filled':
+            # filled x with random removal
+            col = np.random.choice([c for c in range(10) if c != bg_color])
+            pattern_grid = [
+                [col, bg_color, col],
+                [bg_color, col, bg_color],
+                [col, bg_color, col]
+            ]
+            pattern_grid = random_removal(pattern_grid)
+            pattern_mask = [
+                [1, 0, 1],
+                [0, 1, 0],
+                [1, 0, 1]
+            ]
+        elif pattern == 'plus_filled':
+            # filled + with random removal
+            col = np.random.choice([c for c in range(10) if c != bg_color])
+            pattern_grid = [
+                [bg_color, col, bg_color],
+                [col, col, col],
+                [bg_color, col, bg_color]
+            ]
+            pattern_grid = random_removal(pattern_grid)
+            pattern_mask = [
+                [0, 1, 0],
+                [1, 1, 1],
+                [0, 1, 0]
+            ]
+        elif pattern == 'square_hollow':
+            # empty square
+            col = np.random.choice([c for c in range(10) if c != bg_color])
+            pattern_grid = [
+                [col, col, col],
+                [col, bg_color, col],
+                [col, col, col]
+            ]
+            pattern_grid = random_removal(pattern_grid)
+            pattern_mask = [
+                [1, 1, 1],
+                [1, 0, 1],
+                [1, 1, 1]
+            ]
+        else:
+            # filled square (with random color inside)
+            col1 = np.random.choice([c for c in range(10) if c != bg_color])
+            col2 = np.random.choice([c for c in range(10) if c != bg_color])
+            pattern_grid = [
+                [col1, col1, col1],
+                [col1, col2, col1],
+                [col1, col1, col1]
+            ]
+            pattern_grid = random_removal(pattern_grid, exclude=[1, 1])   # don't remove the central dot
+            pattern_mask = [
+                [1, 1, 1],
+                [1, 1, 1],
+                [1, 1, 1]
+            ]
 
-        # empty plus with random removal
-        col = np.random.choice([c for c in range(10) if c != bg_color])
-        pattern = [
-            [bg_color, col, bg_color],
-            [col, bg_color, col],
-            [bg_color, col, bg_color]
-        ]
-        pattern = random_removal(pattern)
-        pattern_mask = [
-            [0, 1, 0],
-            [1, 0, 1],
-            [0, 1, 0]
-        ]
+        output_patterns.append(np.array(pattern_grid))
+        output_masks.append(np.array(pattern_mask))
 
-        # empty x with random removal
-        col = np.random.choice([c for c in range(10) if c != bg_color])
-        pattern = [
-            [col, bg_color, col],
-            [bg_color, bg_color, bg_color],
-            [col, bg_color, col]
-        ]
-        pattern = random_removal(pattern)
-        pattern_mask = [
-            [1, 0, 1],
-            [0, 0, 0],
-            [1, 0, 1]
-        ]
-
-        # filled x with random removal
-        col = np.random.choice([c for c in range(10) if c != bg_color])
-        pattern = [
-            [col, bg_color, col],
-            [bg_color, col, bg_color],
-            [col, bg_color, col]
-        ]
-        pattern = random_removal(pattern)
-        pattern_mask = [
-            [1, 0, 1],
-            [0, 1, 0],
-            [1, 0, 1]
-        ]
-
-        # filled + with random removal
-        col = np.random.choice([c for c in range(10) if c != bg_color])
-        pattern = [
-            [bg_color, col, bg_color],
-            [col, col, col],
-            [bg_color, col, bg_color]
-        ]
-        pattern = random_removal(pattern)
-        pattern_mask = [
-            [0, 1, 0],
-            [1, 1, 1],
-            [0, 1, 0]
-        ]
-
-        # empty square
-        col = np.random.choice([c for c in range(10) if c != bg_color])
-        pattern = [
-            [col, col, col],
-            [col, bg_color, col],
-            [col, col, col]
-        ]
-        pattern = random_removal(pattern)
-        pattern_mask = [
-            [1, 1, 1],
-            [1, 0, 1],
-            [1, 1, 1]
-        ]
-
-        # filled square (with random color inside)
-        col1 = np.random.choice([c for c in range(10) if c != bg_color])
-        col2 = np.random.choice([c for c in range(10) if c != bg_color])
-        pattern = [
-            [col1, col1, col1],
-            [col1, col2, col1],
-            [col1, col1, col1]
-        ]
-        pattern = random_removal(pattern, exclude=[1, 1])   # don't remove the central dot
-        pattern_mask = [
-            [1, 1, 1],
-            [1, 1, 1],
-            [1, 1, 1]
-        ]
-
-    return np.array(pattern), np.array(pattern_mask)
+    return output_patterns, output_masks
 
 def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern='dot_plus'):
-    training_patterns = ['dot_plus']
+    training_patterns = ['dot_plus', 'plus_filled', 'square_hollow']
 
     if min_dim is None:
         min_dim = 5
@@ -780,18 +789,20 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
     object_colors = np.random.choice(available_colors, num_objects, replace=False)
 
     # IMPORTANT: Pass the actual grid background color to get_pattern
-    pattern_grid, pattern_mask = get_pattern(bg_color, pattern)
-
     # Randomly choose number of patterns to paste (1 to 6)
     num_patterns = np.random.randint(1, 7)
 
-    pattern_height, pattern_width = pattern_grid.shape
-    mask_height, mask_width = pattern_mask.shape
+    pattern_grids, pattern_masks = get_pattern(bg_color, pattern, num_patterns)
+
+    pattern_height, pattern_width = pattern_grids[0].shape
+    mask_height, mask_width = pattern_masks[0].shape
 
     # 50% chance to add random noise to the background
     if np.random.random() < 0.5:
-        # Find all colors used in the pattern_grid (excluding background)
-        pattern_colors = set(np.unique(pattern_grid))
+        # Find all colors used in all pattern_grids (excluding background)
+        pattern_colors = set()
+        for pg in pattern_grids:
+            pattern_colors.update(np.unique(pg))
         if bg_color in pattern_colors:
             pattern_colors.remove(bg_color)
         # Also exclude all object colors (to be extra safe)
@@ -800,8 +811,8 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
         possible_noise_colors = [c for c in range(10) if c not in pattern_colors and c != bg_color]
         if possible_noise_colors:
             noise_color = np.random.choice(possible_noise_colors)
-            # Number of noisy pixels: between 1 and 20% of the grid area
-            num_noisy_pixels = np.random.randint(0.1, int(0.5 * num_rows * num_cols) + 1)
+            # Number of noisy pixels: between 1 and 50% of the grid area
+            num_noisy_pixels = np.random.randint(1, int(0.5 * num_rows * num_cols) + 1)
             # Generate random positions for the noise
             noisy_indices = np.unravel_index(
                 np.random.choice(num_rows * num_cols, num_noisy_pixels, replace=False),
@@ -813,6 +824,12 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
     occupied_mask = np.zeros((num_rows, num_cols), dtype=bool)
 
     for obj_idx in range(num_patterns):
+        # Use the pre-generated pattern_grid and pattern_mask for this object
+        pattern_grid = pattern_grids[obj_idx]
+        pattern_mask = pattern_masks[obj_idx]
+        pattern_height, pattern_width = pattern_grid.shape
+        mask_height, mask_width = pattern_mask.shape
+
         # Randomly select a color for this pattern (not background)
         obj_color = object_colors[obj_idx % len(object_colors)]
 
