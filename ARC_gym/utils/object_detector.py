@@ -126,18 +126,6 @@ class ObjectDetector:
 
     @staticmethod
     def get_objects_distinct_colors_adjacent_empty(grid):
-        # Find the background color (most common color in the grid)
-        unique_colors, counts = np.unique(grid, return_counts=True)
-        bg_color = unique_colors[np.argmax(counts)]
-
-        object_mask = np.zeros_like(grid)
-
-        
-
-        return object_mask
-
-    @staticmethod
-    def get_objects_distinct_colors_adjacent_empty(grid):
         """
         Find all outer containment objects. Specifically, find all object borders
         of a uniform color. Everything located inside (regardless of color) of 
@@ -295,6 +283,28 @@ class ObjectDetector:
             for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 stack.append((i + di, j + dj))
 
+    @staticmethod
+    def get_objects_pattern_dot_plus(grid):
+        unique_colors, counts = np.unique(grid, return_counts=True)
+        bg_color = unique_colors[np.argmax(counts)]
+        object_mask = np.zeros_like(grid, dtype=int)
+        
+        # Mark all non-background pixels and their 4-connected neighbors as object 1
+        mask = (grid != bg_color)
+        # Pad the mask to handle edge pixels
+        padded_mask = np.pad(mask, pad_width=1, mode='constant', constant_values=False)
+        expanded_mask = np.zeros_like(padded_mask, dtype=bool)
+        # For each direction: center, up, down, left, right
+        for di, dj in [(0,0), (-1,0), (1,0), (0,-1), (0,1)]:
+            expanded_mask[1+di:1+di+mask.shape[0], 1+dj:1+dj+mask.shape[1]] |= mask
+
+        # Remove the padding
+        expanded_mask = expanded_mask[1:-1, 1:-1]
+        object_mask[expanded_mask] = 1
+
+        return object_mask
+
+        
     @staticmethod
     def get_objects_distinct_colors(grid):
         # Find the background color (most common color in the grid)
@@ -608,3 +618,6 @@ class ObjectDetector:
             return ObjectDetector.get_objects_distinct_colors(grid)
         elif category == 'incomplete_rectangles':
             return ObjectDetector.get_objects_incomplete_rectangles(grid)
+        elif category == 'pattern_dot_plus':
+            return ObjectDetector.get_objects_pattern_dot_plus(grid)
+        

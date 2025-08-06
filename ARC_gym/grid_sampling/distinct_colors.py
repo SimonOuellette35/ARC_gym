@@ -269,7 +269,6 @@ def sample_distinct_colors_adjacent_empty_training(training_path):
 
 def sample_incomplete_rectangles_training(training_path):
     training_examples = [
-        # simple empty shapes
         ('60b61512', 0),
         ('6d75e8bb', 0),
         ('8fbca751', 0),
@@ -277,6 +276,22 @@ def sample_incomplete_rectangles_training(training_path):
     ]
 
     return return_training_objects(training_examples, training_path, 'incomplete_rectangles')
+
+def sample_incomplete_pattern_training(training_path, pattern):
+    if pattern == 'dot_plus':
+        training_examples = [
+            ('d364b489', 0)
+        ]
+        return return_training_objects(training_examples, training_path, 'pattern_dot_plus')
+    
+    else:
+        training_examples = [
+            ('9caba7c3', 0),        # square
+            ('14754a24', 0)         # plus sign
+        ]
+
+        return return_training_objects(training_examples, training_path, 'pattern_...')
+    
 
 def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None):
     if min_dim is None:
@@ -574,6 +589,277 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
                     grid[start_row + 1:start_row + obj_height - 1, start_col + obj_width - 1] = obj_color
 
             break
+
+    return grid, object_mask
+
+def get_pattern(bg_color, pattern):
+    def random_removal(pattern, exclude=None):
+        px_count = 0
+        for row in pattern:
+            for val in row:
+                if val != bg_color:
+                    px_count += 1
+
+        to_remove = np.random.randint(1, px_count // 2 + 1)
+
+        # Randomly remove 'to_remove' non-bg_color pixels from pattern (replace with bg_color)
+        # If exclude is not None, do not remove the pixel at 'exclude' (row, col)
+
+        # Find all non-bg_color pixel coordinates
+        coords = []
+        for i, row in enumerate(pattern):
+            for j, val in enumerate(row):
+                if val != bg_color:
+                    if exclude is not None and (i, j) == tuple(exclude):
+                        continue
+                    coords.append((i, j))
+
+        if len(coords) == 0 or to_remove == 0:
+            return pattern
+
+        # If to_remove > available, just remove all
+        to_remove = min(to_remove, len(coords))
+        remove_coords = np.random.choice(len(coords), size=to_remove, replace=False)
+        # Make a copy to avoid mutating input
+        new_pattern = [list(r) for r in pattern]
+        for idx in remove_coords:
+            i, j = coords[idx]
+            new_pattern[i][j] = bg_color
+
+        return new_pattern
+
+    # dot that gets transformed into a '+'
+    if pattern == 'dot_plus':
+        col = np.random.choice([c for c in range(10) if c != bg_color])
+        pattern = [
+            [bg_color, bg_color, bg_color],
+            [bg_color, col, bg_color],
+            [bg_color, bg_color, bg_color]
+        ]
+        pattern_mask = [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0]
+        ]
+    else:
+        # dot that gets transformed into a 'x'
+        col = np.random.choice([c for c in range(10) if c != bg_color])
+        pattern = [
+            col
+        ]
+        pattern_mask = [
+            [1, 0, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+        ]
+
+        # empty plus with random removal
+        col = np.random.choice([c for c in range(10) if c != bg_color])
+        pattern = [
+            [bg_color, col, bg_color],
+            [col, bg_color, col],
+            [bg_color, col, bg_color]
+        ]
+        pattern = random_removal(pattern)
+        pattern_mask = [
+            [0, 1, 0],
+            [1, 0, 1],
+            [0, 1, 0]
+        ]
+
+        # empty x with random removal
+        col = np.random.choice([c for c in range(10) if c != bg_color])
+        pattern = [
+            [col, bg_color, col],
+            [bg_color, bg_color, bg_color],
+            [col, bg_color, col]
+        ]
+        pattern = random_removal(pattern)
+        pattern_mask = [
+            [1, 0, 1],
+            [0, 0, 0],
+            [1, 0, 1]
+        ]
+
+        # filled x with random removal
+        col = np.random.choice([c for c in range(10) if c != bg_color])
+        pattern = [
+            [col, bg_color, col],
+            [bg_color, col, bg_color],
+            [col, bg_color, col]
+        ]
+        pattern = random_removal(pattern)
+        pattern_mask = [
+            [1, 0, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+        ]
+
+        # filled + with random removal
+        col = np.random.choice([c for c in range(10) if c != bg_color])
+        pattern = [
+            [bg_color, col, bg_color],
+            [col, col, col],
+            [bg_color, col, bg_color]
+        ]
+        pattern = random_removal(pattern)
+        pattern_mask = [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0]
+        ]
+
+        # empty square
+        col = np.random.choice([c for c in range(10) if c != bg_color])
+        pattern = [
+            [col, col, col],
+            [col, bg_color, col],
+            [col, col, col]
+        ]
+        pattern = random_removal(pattern)
+        pattern_mask = [
+            [1, 1, 1],
+            [1, 0, 1],
+            [1, 1, 1]
+        ]
+
+        # filled square (with random color inside)
+        col1 = np.random.choice([c for c in range(10) if c != bg_color])
+        col2 = np.random.choice([c for c in range(10) if c != bg_color])
+        pattern = [
+            [col1, col1, col1],
+            [col1, col2, col1],
+            [col1, col1, col1]
+        ]
+        pattern = random_removal(pattern, exclude=[1, 1])   # don't remove the central dot
+        pattern_mask = [
+            [1, 1, 1],
+            [1, 1, 1],
+            [1, 1, 1]
+        ]
+
+    return np.array(pattern), np.array(pattern_mask)
+
+def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern='dot_plus'):
+    training_patterns = ['dot_plus']
+
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    a = np.random.uniform()
+
+    if a < 0.1 and pattern in training_patterns:
+        return sample_incomplete_pattern_training(training_path, pattern)
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+    
+    # Generate 1 to 7 objects
+    num_objects = np.random.randint(1, 8)
+    object_colors = []
+    
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+
+    # IMPORTANT: Pass the actual grid background color to get_pattern
+    pattern_grid, pattern_mask = get_pattern(bg_color, pattern)
+
+    # Randomly choose number of patterns to paste (1 to 6)
+    num_patterns = np.random.randint(1, 7)
+
+    pattern_height, pattern_width = pattern_grid.shape
+    mask_height, mask_width = pattern_mask.shape
+
+    # 50% chance to add random noise to the background
+    if np.random.random() < 0.5:
+        # Find all colors used in the pattern_grid (excluding background)
+        pattern_colors = set(np.unique(pattern_grid))
+        if bg_color in pattern_colors:
+            pattern_colors.remove(bg_color)
+        # Also exclude all object colors (to be extra safe)
+        pattern_colors.update(object_colors)
+        # Choose a noise color that is not in pattern_colors or bg_color
+        possible_noise_colors = [c for c in range(10) if c not in pattern_colors and c != bg_color]
+        if possible_noise_colors:
+            noise_color = np.random.choice(possible_noise_colors)
+            # Number of noisy pixels: between 1 and 20% of the grid area
+            num_noisy_pixels = np.random.randint(0.1, int(0.5 * num_rows * num_cols) + 1)
+            # Generate random positions for the noise
+            noisy_indices = np.unravel_index(
+                np.random.choice(num_rows * num_cols, num_noisy_pixels, replace=False),
+                (num_rows, num_cols)
+            )
+            grid[noisy_indices] = noise_color
+
+    # To prevent overlapping, we will keep a mask of occupied cells (using pattern_mask, not pattern_grid)
+    occupied_mask = np.zeros((num_rows, num_cols), dtype=bool)
+
+    for obj_idx in range(num_patterns):
+        # Randomly select a color for this pattern (not background)
+        obj_color = object_colors[obj_idx % len(object_colors)]
+
+        # Find possible top-left positions where the pattern fits
+        max_row = num_rows - pattern_height
+        max_col = num_cols - pattern_width
+
+        if max_row < 0 or max_col < 0:
+            # Pattern doesn't fit, skip this placement
+            continue
+
+        # Find all possible top-left positions where the pattern_mask does not overlap with occupied_mask
+        possible_positions = []
+        for row in range(0, max_row + 1):
+            for col in range(0, max_col + 1):
+                # Check if any cell in the region covered by pattern_mask is already occupied
+                region = occupied_mask[row:row+pattern_height, col:col+pattern_width]
+                overlap = np.any(region & (pattern_mask.astype(bool)))
+                if not overlap:
+                    possible_positions.append((row, col))
+
+        if not possible_positions:
+            # No valid position to place this pattern without overlap
+            continue
+
+        # Randomly select one of the valid positions
+        start_row, start_col = possible_positions[np.random.randint(len(possible_positions))]
+
+        # Paste the pattern onto the grid and update object_mask and occupied_mask
+        for i in range(pattern_height):
+            for j in range(pattern_width):
+                grid_row = start_row + i
+                grid_col = start_col + j
+                # Only overwrite background cells with obj_color where pattern_mask is 1 and pattern_grid is not bg_color
+                if (0 <= grid_row < grid.shape[0] and 0 <= grid_col < grid.shape[1] and
+                    pattern_mask[i, j] and pattern_grid[i, j] != bg_color):
+                    grid[grid_row, grid_col] = obj_color
+
+        for i in range(mask_height):
+            for j in range(mask_width):
+                grid_row = start_row + i
+                grid_col = start_col + j
+                if (0 <= grid_row < object_mask.shape[0] and
+                    0 <= grid_col < object_mask.shape[1] and
+                    pattern_mask[i, j]):
+                    object_mask[grid_row, grid_col] = obj_idx + 1
+                    occupied_mask[grid_row, grid_col] = True
 
     return grid, object_mask
 
