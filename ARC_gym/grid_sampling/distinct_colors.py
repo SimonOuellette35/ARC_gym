@@ -416,6 +416,211 @@ def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None):
 
     return grid, object_mask
 
+def sample_corner_objects(training_path, min_dim=None, max_dim=None):
+    if min_dim is None:
+        min_dim = 16
+
+    if max_dim is None:
+        max_dim = 30
+
+    a = np.random.uniform()
+
+    # # TODO:
+    # if a < 0.05:
+    #     return sample_corner_objects_training(training_path)
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+    
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    # Generate 1 to 4 objects
+    num_objects = np.random.randint(1, 5)
+    object_colors = []
+    
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+
+    for obj_idx in range(num_objects):
+        # For each object, generate a filled rectangle of random size (min 8x8, up to grid size), non-overlapping
+        obj_color = object_colors[obj_idx]
+        obj_id = obj_idx + 1  # Object IDs start from 1
+
+        # Determine rectangle size
+        min_rect_size = 6
+        max_rect_height = num_rows
+        max_rect_width = num_cols
+
+        if min_rect_size > max_rect_height // 2:
+            rect_height = min_rect_size
+        else:
+            rect_height = np.random.randint(min_rect_size, max_rect_height // 2)
+        if min_rect_size > max_rect_width // 2:
+            rect_width = min_rect_size
+        else:
+            rect_width = np.random.randint(min_rect_size, max_rect_width // 2)
+
+        # Try to find a non-overlapping position for the rectangle
+        found_spot = False
+        max_attempts = 100
+        for _ in range(max_attempts):
+            top = np.random.randint(0, num_rows - rect_height + 1)
+            left = np.random.randint(0, num_cols - rect_width + 1)
+            # Check for overlap in object_mask (must be 0 everywhere in the rectangle)
+            # Also check for overlap in grid (must be bg_color everywhere in the rectangle)
+            rect_mask = object_mask[top:top+rect_height, left:left+rect_width]
+            rect_grid = grid[top:top+rect_height, left:left+rect_width]
+            if np.all(rect_mask == 0) and np.all(rect_grid == bg_color):
+                # Place the rectangle
+                grid[top:top+rect_height, left:left+rect_width] = obj_color
+                object_mask[top:top+rect_height, left:left+rect_width] = obj_id
+                found_spot = True
+                break
+            
+        # If no non-overlapping spot is found, skip placing this object
+        if not found_spot:
+            continue
+
+        edge_idx = np.random.choice(np.arange(5))
+
+        if edge_idx == 0:
+            if np.random.uniform() > 0.3:
+                continue
+
+            # Top edge
+            # Sample a rectangle of width as before, and height between 2 and grid height - 2
+            min_seg_len = 2
+            max_seg_len = max(2, rect_width - 2)
+            if max_seg_len < min_seg_len:
+                seg_len = min_seg_len
+            else:
+                seg_len = np.random.randint(min_seg_len, max_seg_len + 1)
+            # Rectangle height: between 2 and rect_height - 2
+            min_rect_height = 2
+            max_rect_height = max(2, rect_height - 2)
+            if max_rect_height < min_rect_height:
+                rect_seg_height = min_rect_height
+            else:
+                rect_seg_height = np.random.randint(min_rect_height, max_rect_height + 1)
+            # Random start position along the top edge
+            start_col = np.random.randint(left, left + rect_width - seg_len + 1)
+            start_row = top
+            # Draw the rectangle with bg_color
+            grid[start_row:start_row + rect_seg_height, start_col:start_col + seg_len] = bg_color
+            object_mask[start_row:start_row + rect_seg_height, start_col:start_col + seg_len] = 0
+        elif edge_idx == 1:
+            # Bottom edge
+            # Sample a rectangle of width as before, and height between 2 and grid height - 2
+            min_seg_len = 2
+            max_seg_len = max(2, rect_width - 2)
+            if max_seg_len < min_seg_len:
+                seg_len = min_seg_len
+            else:
+                seg_len = np.random.randint(min_seg_len, max_seg_len + 1)
+            # Rectangle height: between 2 and rect_height - 2
+            min_rect_height = 2
+            max_rect_height = max(2, rect_height - 2)
+            if max_rect_height < min_rect_height:
+                rect_seg_height = min_rect_height
+            else:
+                rect_seg_height = np.random.randint(min_rect_height, max_rect_height + 1)
+            # Random start position along the bottom edge
+            start_col = np.random.randint(left, left + rect_width - seg_len + 1)
+            start_row = top + rect_height - rect_seg_height
+            # Draw the rectangle with bg_color
+            grid[start_row:start_row + rect_seg_height, start_col:start_col + seg_len] = bg_color
+            object_mask[start_row:start_row + rect_seg_height, start_col:start_col + seg_len] = 0
+        elif edge_idx == 2:
+            # Left edge
+            # Sample a rectangle of height as before, and width between 2 and rect_width - 2
+            min_seg_len = 2
+            max_seg_len = max(2, rect_height - 2)
+            if max_seg_len < min_seg_len:
+                seg_len = min_seg_len
+            else:
+                seg_len = np.random.randint(min_seg_len, max_seg_len + 1)
+            # Rectangle width: between 2 and rect_width - 2
+            min_rect_width = 2
+            max_rect_width = max(2, rect_width - 2)
+            if max_rect_width < min_rect_width:
+                rect_seg_width = min_rect_width
+            else:
+                rect_seg_width = np.random.randint(min_rect_width, max_rect_width + 1)
+            # Random start position along the left edge
+            start_row = np.random.randint(top, top + rect_height - seg_len + 1)
+            start_col = left
+            # Draw the rectangle with bg_color
+            grid[start_row:start_row + seg_len, start_col:start_col + rect_seg_width] = bg_color
+            object_mask[start_row:start_row + seg_len, start_col:start_col + rect_seg_width] = 0
+        elif edge_idx == 3:
+            # Right edge
+            # Sample a rectangle of height as before, and width between 2 and rect_width - 2
+            min_seg_len = 2
+            max_seg_len = max(2, rect_height - 2)
+            if max_seg_len < min_seg_len:
+                seg_len = min_seg_len
+            else:
+                seg_len = np.random.randint(min_seg_len, max_seg_len + 1)
+            # Rectangle width: between 2 and rect_width - 2
+            min_rect_width = 2
+            max_rect_width = max(2, rect_width - 2)
+            if max_rect_width < min_rect_width:
+                rect_seg_width = min_rect_width
+            else:
+                rect_seg_width = np.random.randint(min_rect_width, max_rect_width + 1)
+            # Random start position along the right edge
+            start_row = np.random.randint(top, top + rect_height - seg_len + 1)
+            start_col = left + rect_width - rect_seg_width
+            # Draw the rectangle with bg_color
+            grid[start_row:start_row + seg_len, start_col:start_col + rect_seg_width] = bg_color
+            object_mask[start_row:start_row + seg_len, start_col:start_col + rect_seg_width] = 0
+
+        # randomly hollow out the object
+        if np.random.uniform() < 0.5:
+            # Hollow out the object by filling inside non-edge, non-background pixels with bg_color
+            # Find all non-background pixels (i.e., object pixels)
+            obj_pixels = np.argwhere(object_mask > 0)
+            if obj_pixels.shape[0] > 0:
+                rows, cols = obj_pixels[:, 0], obj_pixels[:, 1]
+                min_row, max_row = rows.min(), rows.max()
+                min_col, max_col = cols.min(), cols.max()
+                # Edge pixels: those on the border of the object bounding box, or with a background neighbor
+                edge_mask = np.zeros_like(object_mask, dtype=bool)
+                for r, c in obj_pixels:
+                    # If on the bounding box edge, it's an edge pixel
+                    if r == min_row or r == max_row or c == min_col or c == max_col:
+                        edge_mask[r, c] = True
+                    else:
+                        # If any 4-neighbor is background, it's an edge pixel
+                        for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
+                            nr, nc = r+dr, c+dc
+                            if nr < 0 or nr >= object_mask.shape[0] or nc < 0 or nc >= object_mask.shape[1]:
+                                edge_mask[r, c] = True
+                                break
+                            if object_mask[nr, nc] == 0:
+                                edge_mask[r, c] = True
+                                break
+                # Fill inside (non-edge) object pixels with bg_color and set mask to 0
+                inside_mask = (object_mask > 0) & (~edge_mask)
+                grid[inside_mask] = bg_color
+                object_mask[inside_mask] = 0
+
+    return grid, object_mask
+
+
 def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=None):
     if min_dim is None:
         min_dim = 3
