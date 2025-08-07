@@ -292,6 +292,16 @@ def sample_incomplete_pattern_training(training_path, pattern):
 
         return return_training_objects(training_examples, training_path, 'pattern_...')
     
+def sample_corner_objects_training(training_path):
+    training_examples = [
+        ('15663ba9', 0),
+        ('18419cfa', 2),
+        ('4b6b68e5', 2),
+        ('b9630600', 1)
+    ]
+
+    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
+    
 
 def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None):
     if min_dim is None:
@@ -425,9 +435,8 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
 
     a = np.random.uniform()
 
-    # # TODO:
-    # if a < 0.05:
-    #     return sample_corner_objects_training(training_path)
+    if a < 0.1:
+        return sample_corner_objects_training(training_path)
 
     # Generate grid dimensions
     num_rows = np.random.randint(min_dim, max_dim + 1)
