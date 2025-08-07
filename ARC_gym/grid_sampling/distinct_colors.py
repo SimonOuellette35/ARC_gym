@@ -503,7 +503,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
             # Top edge
             # Sample a rectangle of width as before, and height between 2 and grid height - 2
             min_seg_len = 2
-            max_seg_len = max(2, rect_width - 2)
+            max_seg_len = max(2, rect_width - 4)
             if max_seg_len < min_seg_len:
                 seg_len = min_seg_len
             else:
@@ -516,7 +516,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
             else:
                 rect_seg_height = np.random.randint(min_rect_height, max_rect_height + 1)
             # Random start position along the top edge
-            start_col = np.random.randint(left, left + rect_width - seg_len + 1)
+            start_col = np.random.randint(left + 2, left + rect_width - seg_len - 1)
             start_row = top
             # Draw the rectangle with bg_color
             grid[start_row:start_row + rect_seg_height, start_col:start_col + seg_len] = bg_color
@@ -525,20 +525,20 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
             # Bottom edge
             # Sample a rectangle of width as before, and height between 2 and grid height - 2
             min_seg_len = 2
-            max_seg_len = max(2, rect_width - 2)
+            max_seg_len = max(2, rect_width - 4)
             if max_seg_len < min_seg_len:
                 seg_len = min_seg_len
             else:
                 seg_len = np.random.randint(min_seg_len, max_seg_len + 1)
             # Rectangle height: between 2 and rect_height - 2
             min_rect_height = 2
-            max_rect_height = max(2, rect_height - 2)
+            max_rect_height = max(2, rect_height - 4)
             if max_rect_height < min_rect_height:
                 rect_seg_height = min_rect_height
             else:
                 rect_seg_height = np.random.randint(min_rect_height, max_rect_height + 1)
             # Random start position along the bottom edge
-            start_col = np.random.randint(left, left + rect_width - seg_len + 1)
+            start_col = np.random.randint(left + 2, left + rect_width - seg_len - 1)
             start_row = top + rect_height - rect_seg_height
             # Draw the rectangle with bg_color
             grid[start_row:start_row + rect_seg_height, start_col:start_col + seg_len] = bg_color
@@ -547,7 +547,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
             # Left edge
             # Sample a rectangle of height as before, and width between 2 and rect_width - 2
             min_seg_len = 2
-            max_seg_len = max(2, rect_height - 2)
+            max_seg_len = max(2, rect_height - 4)
             if max_seg_len < min_seg_len:
                 seg_len = min_seg_len
             else:
@@ -560,7 +560,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
             else:
                 rect_seg_width = np.random.randint(min_rect_width, max_rect_width + 1)
             # Random start position along the left edge
-            start_row = np.random.randint(top, top + rect_height - seg_len + 1)
+            start_row = np.random.randint(top + 2, top + rect_height - seg_len - 1)
             start_col = left
             # Draw the rectangle with bg_color
             grid[start_row:start_row + seg_len, start_col:start_col + rect_seg_width] = bg_color
@@ -569,7 +569,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
             # Right edge
             # Sample a rectangle of height as before, and width between 2 and rect_width - 2
             min_seg_len = 2
-            max_seg_len = max(2, rect_height - 2)
+            max_seg_len = max(2, rect_height - 4)
             if max_seg_len < min_seg_len:
                 seg_len = min_seg_len
             else:
@@ -582,7 +582,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
             else:
                 rect_seg_width = np.random.randint(min_rect_width, max_rect_width + 1)
             # Random start position along the right edge
-            start_row = np.random.randint(top, top + rect_height - seg_len + 1)
+            start_row = np.random.randint(top + 2, top + rect_height - seg_len - 1)
             start_col = left + rect_width - rect_seg_width
             # Draw the rectangle with bg_color
             grid[start_row:start_row + seg_len, start_col:start_col + rect_seg_width] = bg_color
@@ -616,7 +616,6 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
                 # Fill inside (non-edge) object pixels with bg_color and set mask to 0
                 inside_mask = (object_mask > 0) & (~edge_mask)
                 grid[inside_mask] = bg_color
-                object_mask[inside_mask] = 0
 
     return grid, object_mask
 
