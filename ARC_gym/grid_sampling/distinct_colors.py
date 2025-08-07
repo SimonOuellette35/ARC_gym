@@ -51,6 +51,15 @@ def return_training_objects(training_examples, training_path, obj_category):
         grid, object_mask = get_bg_color_swap(grid, object_mask)
 
     a = np.random.uniform()
+    if a < 0.5:
+        # fg colors remapping
+        # Randomly permute colors 0-9 for a one-to-one mapping
+        color_mapping = np.random.permutation(10)
+
+        # Remap grid colors
+        grid = color_mapping[grid]
+
+    a = np.random.uniform()
     if a < 0.75:
         return get_subgrid(grid, object_mask)
     else:
