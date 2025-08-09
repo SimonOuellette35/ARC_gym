@@ -5,65 +5,71 @@ import json
 
 
 def return_training_objects(training_examples, training_path, obj_category):
-    selected_example = random.choice(training_examples)
-
-    # load the example from file.
-    task_id = selected_example[0]
-    json_path = '%s/%s.json' % (training_path, task_id)
     
-    with open(json_path, 'r') as f:
-        task_data = json.load(f)
+    while True:
+        selected_example = random.choice(training_examples)
 
-    # sample from the grids, based on whether we use input or output or both.
-    possible_grids = []
-    grids_to_use = selected_example[1]
+        # load the example from file.
+        task_id = selected_example[0]
+        json_path = '%s/%s.json' % (training_path, task_id)
+        
+        with open(json_path, 'r') as f:
+            task_data = json.load(f)
 
-    tmp_list = task_data["train"]
-    tmp_list.extend(task_data["test"])
+        # sample from the grids, based on whether we use input or output or both.
+        possible_grids = []
+        grids_to_use = selected_example[1]
 
-    if grids_to_use == 0:
-        for item in tmp_list:
-            possible_grids.append(item["input"])
-    elif grids_to_use == 1:
-        for item in tmp_list:
-            possible_grids.append(item["output"])
-    else:
-        for item in tmp_list:
-            possible_grids.append(item["input"])
-            possible_grids.append(item["output"])
+        tmp_list = task_data["train"]
+        tmp_list.extend(task_data["test"])
 
-    grid_idx = random.randrange(len(possible_grids))
-    # for gi, gt in enumerate(possible_grids):
-    #     print(f"Grid #{gi}: {gt}")
+        if grids_to_use == 0:
+            for item in tmp_list:
+                possible_grids.append(item["input"])
+        elif grids_to_use == 1:
+            for item in tmp_list:
+                possible_grids.append(item["output"])
+        else:
+            for item in tmp_list:
+                possible_grids.append(item["input"])
+                possible_grids.append(item["output"])
 
-    grid = possible_grids[grid_idx]
-    grid = np.array(grid, dtype=np.int8)
+        grid_idx = random.randrange(len(possible_grids))
+        # for gi, gt in enumerate(possible_grids):
+        #     print(f"Grid #{gi}: {gt}")
 
-    # run the hand-crafted heuristic to extract the object mask
-    if task_id == 'e74e1818':
-        object_mask = ObjectDetector.get_objects(grid, 'distinct_colors')
-    else:
-        object_mask = ObjectDetector.get_objects(grid, obj_category, task_id, grid_idx)
+        grid = possible_grids[grid_idx]
+        grid = np.array(grid, dtype=np.int8)
 
-    a = np.random.uniform()
-    if a < 0.3:
-        # bg color augmentation
-        grid, object_mask = get_bg_color_swap(grid, object_mask)
+        # run the hand-crafted heuristic to extract the object mask
+        if task_id == 'e74e1818':
+            object_mask = ObjectDetector.get_objects(grid, 'distinct_colors')
+        else:
+            object_mask = ObjectDetector.get_objects(grid, obj_category, task_id, grid_idx)
 
-    a = np.random.uniform()
-    if a < 0.5:
-        # fg colors remapping
-        # Randomly permute colors 0-9 for a one-to-one mapping
-        color_mapping = np.random.permutation(10)
+        if object_mask is None or object_mask.shape == ():
+            print(f"==> Got an object_mask None on training_examples = {training_examples}, obj_category = {obj_category}")
+            continue
+        
+        a = np.random.uniform()
+        if a < 0.3:
+            # bg color augmentation
+            grid, object_mask = get_bg_color_swap(grid, object_mask)
 
-        # Remap grid colors
-        grid = color_mapping[grid]
+        a = np.random.uniform()
+        if a < 0.5:
+            # fg colors remapping
+            # Randomly permute colors 0-9 for a one-to-one mapping
+            color_mapping = np.random.permutation(10)
 
-    a = np.random.uniform()
-    if a < 0.75:
-        return get_subgrid(grid, object_mask)
-    else:
-        return grid, object_mask
+            # Remap grid colors
+            grid = color_mapping[grid]
+
+        a = np.random.uniform()
+        if a < 0.75:
+            return get_subgrid(grid, object_mask)
+        else:
+            return grid, object_mask
 
 def get_bg_color_swap(grid, object_mask):
     """
@@ -293,14 +299,19 @@ def sample_incomplete_pattern_training(training_path, pattern):
         ]
         return return_training_objects(training_examples, training_path, 'pattern_dot_plus')
     
-    else:
+    elif pattern == 'square_hollow':
         training_examples = [
-            ('9caba7c3', 0),        # square
-            ('14754a24', 0)         # plus sign
+            ('9caba7c3', 0),
         ]
 
-        return return_training_objects(training_examples, training_path, 'pattern_...')
-    
+        return return_training_objects(training_examples, training_path, 'pattern_square_hollow')
+    elif pattern == 'plus_filled':
+        training_examples = [
+            ('14754a24', 0)
+        ]
+
+        return return_training_objects(training_examples, training_path, 'pattern_plus_filled')
+
 def sample_corner_objects_training(training_path):
     training_examples = [
         ('15663ba9', 0),

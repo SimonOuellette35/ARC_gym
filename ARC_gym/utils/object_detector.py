@@ -284,6 +284,137 @@ class ObjectDetector:
                 stack.append((i + di, j + dj))
 
     @staticmethod
+    def get_objects_pattern_square_hollow(grid):
+        unique_colors, counts = np.unique(grid, return_counts=True)
+        
+        # Always include 0 as a background color, plus the next most common color
+        if 0 in unique_colors:
+            zero_idx = np.where(unique_colors == 0)[0][0]
+            # Remove 0 from the list to find the next most common
+            nonzero_colors = np.delete(unique_colors, zero_idx)
+            nonzero_counts = np.delete(counts, zero_idx)
+            if len(nonzero_colors) > 0:
+                next_bg_idx = np.argmax(nonzero_counts)
+                bg_colors = [0, nonzero_colors[next_bg_idx]]
+            else:
+                bg_colors = [0]
+        else:
+            # 0 not present, just take the two most common
+            top2_idx = np.argsort(-counts)[:2]
+            bg_colors = list(unique_colors[top2_idx])
+        
+        object_mask = np.zeros_like(grid, dtype=int)
+        
+        # Group foreground pixels by which 3x3 grid tile they belong to
+        # Each pixel (i,j) belongs to the 3x3 tile starting at (3*(i//3), 3*(j//3))
+        object_mask = np.zeros_like(grid, dtype=int)
+        obj_id = 1
+        rows, cols = grid.shape
+        
+        for i in range(rows):
+            for j in range(cols):
+                # For each foreground pixel, find the 3x3 square (centered at or near (i,j)) that covers the most non-bg pixels (including itself)
+                # and assign a new object id to those pixels in object_mask (if not already assigned)
+                if grid[i, j] not in bg_colors and object_mask[i, j] == 0:
+                    best_count = 0
+                    best_top, best_left = None, None
+
+                    # Try all possible 3x3 squares containing (i, j)
+                    for di in range(-2, 1):
+                        for dj in range(-2, 1):
+                            top = i + di
+                            left = j + dj
+                            # Check bounds
+                            if top < 0 or left < 0 or top + 2 >= rows or left + 2 >= cols:
+                                continue
+                            # Count non-bg pixels in this 3x3 square that are not yet assigned
+                            count = 0
+                            for ii in range(top, top + 3):
+                                for jj in range(left, left + 3):
+                                    if grid[ii, jj] not in bg_colors and object_mask[ii, jj] == 0:
+                                        count += 1
+                            if count > best_count:
+                                best_count = count
+                                best_top, best_left = top, left
+
+                    # If we found a 3x3 square with at least one non-bg pixel, assign a new object id
+                    if best_count > 0:
+                        for ii in range(best_top, best_top + 3):
+                            for jj in range(best_left, best_left + 3):
+                                if object_mask[ii, jj] == 0:
+                                    object_mask[ii, jj] = obj_id
+                        obj_id += 1
+
+        return object_mask
+
+    @staticmethod
+    def get_objects_pattern_plus_filled(grid):
+        unique_colors, counts = np.unique(grid, return_counts=True)
+        
+        # Always include 0 as a background color, plus the next most common color
+        if 0 in unique_colors:
+            zero_idx = np.where(unique_colors == 0)[0][0]
+            # Remove 0 from the list to find the next most common
+            nonzero_colors = np.delete(unique_colors, zero_idx)
+            nonzero_counts = np.delete(counts, zero_idx)
+            if len(nonzero_colors) > 0:
+                next_bg_idx = np.argmax(nonzero_counts)
+                bg_colors = [0, nonzero_colors[next_bg_idx]]
+            else:
+                bg_colors = [0]
+        else:
+            # 0 not present, just take the two most common
+            top2_idx = np.argsort(-counts)[:2]
+            bg_colors = list(unique_colors[top2_idx])
+        
+        object_mask = np.zeros_like(grid, dtype=int)
+        
+        # Group foreground pixels by which 3x3 grid tile they belong to
+        # Each pixel (i,j) belongs to the 3x3 tile starting at (3*(i//3), 3*(j//3))
+        object_mask = np.zeros_like(grid, dtype=int)
+        obj_id = 1
+        rows, cols = grid.shape
+        
+        for i in range(rows):
+            for j in range(cols):
+                # For each foreground pixel, find the 3x3 "plus sign" (centered at or near (i,j)) that covers the most non-bg pixels (including itself)
+                # and assign a new object id to those pixels in object_mask (if not already assigned)
+                if grid[i, j] not in bg_colors and object_mask[i, j] == 0:
+                    best_count = 0
+                    best_top, best_left = None, None
+
+                    # Try all possible 3x3 "plus sign" shapes containing (i, j)
+                    for di in range(-2, 1):
+                        for dj in range(-2, 1):
+                            top = i + di
+                            left = j + dj
+                            # Check bounds
+                            if top < 0 or left < 0 or top + 2 >= rows or left + 2 >= cols:
+                                continue
+                            # Count non-bg pixels in this 3x3 plus sign that are not yet assigned
+                            count = 0
+                            for ii in range(top, top + 3):
+                                for jj in range(left, left + 3):
+                                    # Only consider plus sign positions: center row, center col, or center cell
+                                    if (ii == top + 1 or jj == left + 1):
+                                        if grid[ii, jj] not in bg_colors and object_mask[ii, jj] == 0:
+                                            count += 1
+                            if count > best_count:
+                                best_count = count
+                                best_top, best_left = top, left
+
+                    # If we found a 3x3 plus sign with at least one non-bg pixel, assign a new object id
+                    if best_count > 0:
+                        for ii in range(best_top, best_top + 3):
+                            for jj in range(best_left, best_left + 3):
+                                if (ii == best_top + 1 or jj == best_left + 1):
+                                    if object_mask[ii, jj] == 0:
+                                        object_mask[ii, jj] = obj_id
+                        obj_id += 1
+
+        return object_mask
+
+    @staticmethod
     def get_objects_pattern_dot_plus(grid):
         unique_colors, counts = np.unique(grid, return_counts=True)
         bg_color = unique_colors[np.argmax(counts)]
@@ -620,4 +751,8 @@ class ObjectDetector:
             return ObjectDetector.get_objects_incomplete_rectangles(grid)
         elif category == 'pattern_dot_plus':
             return ObjectDetector.get_objects_pattern_dot_plus(grid)
+        elif category == 'pattern_square_hollow':
+            return ObjectDetector.get_objects_pattern_square_hollow(grid)
+        elif category == 'pattern_plus_filled':
+            return ObjectDetector.get_objects_pattern_plus_filled(grid)
         
