@@ -266,6 +266,7 @@ def sample_distinct_colors_adjacent_empty_training(training_path):
         ('dc2e9a9d', 2),
         ('f3e62deb', 2),
         ('fc754716', 1),
+        ('00d62c1b', 0)
 
         # "semi-empty" shapes
         ('00dbd492', 0),
