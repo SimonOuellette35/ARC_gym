@@ -396,7 +396,8 @@ class GridSampler:
             return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_filled')
         elif selected_cat == 'corner_objects':
             return DCA.sample_corner_objects(self.training_path, min_dim, max_dim)
-
+        elif selected_cat == 'fixed_size_2col_shapes':
+            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim)
 
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()

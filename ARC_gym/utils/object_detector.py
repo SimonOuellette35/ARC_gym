@@ -454,6 +454,404 @@ class ObjectDetector:
         return object_mask
 
     @staticmethod
+    def get_fixed_square_placement(grid, dim=3, adjacency_allowed=False):
+        """
+        Iteratively find the dim x dim rectangle with the most nonzero pixels,
+        assign the full dim x dim rectangle as the next object, remove those pixels, and repeat.
+        If adjacency_allowed is False, objects (dim x dim squares) should NEVER be directly adjacent to each other.
+        If adjacency_allowed is True, objects may be directly adjacent.
+        """
+        nrows, ncols = grid.shape
+        temp_grid = grid.copy()
+        object_mask = np.zeros_like(grid, dtype=int)
+        obj_id = 1
+
+        def get_padding(i, j, temp_grid):
+            # Compute padding (distance to next nonzero pixel or edge) in all four directions
+            # for the dim x dim square at (i, j)
+            up = i
+            while up > 0 and np.all(temp_grid[up-1, j:j+dim] == 0):
+                up -= 1
+            pad_up = i - up
+
+            down = i+dim
+            while down < nrows and np.all(temp_grid[down, j:j+dim] == 0):
+                down += 1
+            pad_down = down - (i+dim)
+
+            left = j
+            while left > 0 and np.all(temp_grid[i:i+dim, left-1] == 0):
+                left -= 1
+            pad_left = j - left
+
+            right = j+dim
+            while right < ncols and np.all(temp_grid[i:i+dim, right] == 0):
+                right += 1
+            pad_right = right - (j+dim)
+
+            return pad_up, pad_down, pad_left, pad_right
+
+        def is_adjacent_to_existing_object(i, j, object_mask):
+            # Check if the dim x dim square at (i, j) is directly adjacent (touching) any existing object
+            # We check the 1-cell border around the dim x dim square
+            row_start = max(0, i-1)
+            row_end = min(nrows, i+dim+1)
+            col_start = max(0, j-1)
+            col_end = min(ncols, j+dim+1)
+            # The region including the dim x dim and its 1-cell border
+            region = object_mask[row_start:row_end, col_start:col_end]
+            # The region corresponding to the dim x dim itself
+            core = np.zeros_like(region, dtype=bool)
+            core_i_start = (i - row_start)
+            core_j_start = (j - col_start)
+            core[core_i_start:core_i_start+dim, core_j_start:core_j_start+dim] = True
+            # If any cell in the border (not in the dim x dim) is nonzero, it's adjacent
+            border = (region != 0) & (~core)
+            return np.any(border)
+
+        while np.any(temp_grid != 0):
+            max_count = -1
+            candidate_positions = []
+            # Search for the dim x dim rectangle with the most nonzero pixels
+            for i in range(nrows - dim + 1):
+                for j in range(ncols - dim + 1):
+                    rect = temp_grid[i:i+dim, j:j+dim]
+                    count = np.count_nonzero(rect)
+                    if count == 0:
+                        continue
+                    # Check adjacency constraint: skip if would be adjacent to an existing object
+                    if not adjacency_allowed and is_adjacent_to_existing_object(i, j, object_mask):
+                        continue
+                    if count > max_count:
+                        max_count = count
+                        candidate_positions = [(i, j)]
+                    elif count == max_count:
+                        candidate_positions.append((i, j))
+            if max_count == -1 or not candidate_positions:
+                break  # No more nonzero pixels in any dim x dim region that satisfy adjacency constraint
+
+            # If tie, break by most even padding (minimize the variance of paddings)
+            if len(candidate_positions) == 1:
+                i, j = candidate_positions[0]
+            else:
+                best_score = None
+                best_pos = None
+                for (i, j) in candidate_positions:
+                    pad_up, pad_down, pad_left, pad_right = get_padding(i, j, temp_grid)
+                    paddings = [pad_up, pad_down, pad_left, pad_right]
+                    # Score: minimize variance, then maximize min padding (for separation)
+                    variance = np.var(paddings)
+                    min_pad = min(paddings)
+                    # Lower variance is better, then higher min_pad is better, then top-left is better
+                    score = (variance, -min_pad, i, j)
+                    if best_score is None or score < best_score:
+                        best_score = score
+                        best_pos = (i, j)
+                i, j = best_pos
+
+            # Assign the full dim x dim rectangle to the current object id
+            object_mask[i:i+dim, j:j+dim] = obj_id
+            # Remove these pixels from temp_grid (only nonzero ones)
+            temp_grid[i:i+dim, j:j+dim][temp_grid[i:i+dim, j:j+dim] != 0] = 0
+            obj_id += 1
+
+        return object_mask
+
+    @staticmethod
+    def split_grid_horizontal(grid, bar=True):
+        """
+        Split the grid horizontally into parts.
+
+        If bar=True (default): Split based on vertical bars of a distinct color.
+        If bar=False: Split based on changes in the color of the columns (i.e., when the color pattern of columns changes).
+        """
+        nrows, ncols = grid.shape
+        object_mask = np.zeros_like(grid, dtype=int)
+
+        if bar:
+            def get_bar_color(grid):
+                # Find the color that is the least common (but still occurs) and for which there is a column that fully contains it
+                unique, counts = np.unique(grid, return_counts=True)
+                color_counts = dict(zip(unique, counts))
+                # Sort colors by increasing count (least common first)
+                sorted_colors = sorted(color_counts.items(), key=lambda x: x[1])
+                nrows, ncols = grid.shape
+                for color, _ in sorted_colors:
+                    # Check if there is a column fully filled with this color
+                    for j in range(ncols):
+                        if np.all(grid[:, j] == color):
+                            return color
+                return None
+
+            bar_color = get_bar_color(grid)
+
+            # Find the columns that are entirely the bar color (vertical bars)
+            bar_cols = []
+            for j in range(ncols):
+                col = grid[:, j]
+                # Only treat as a bar if at least one cell is bar_color and all others are bar_color or 0
+                if np.all((col == bar_color) | (col == 0)) and np.any(col == bar_color):
+                    bar_cols.append(j)
+
+            # Add -1 and ncols as boundaries for easier splitting
+            split_points = [-1] + bar_cols + [ncols]
+            obj_id = 1
+            for k in range(len(split_points) - 1):
+                left = split_points[k] + 1
+                right = split_points[k + 1]
+                # Skip regions that are entirely background (all zeros)
+                region = grid[:, left:right]
+                if left >= right or np.all(region == 0):
+                    continue
+                # For each region between bars, assign a unique object id to the full rectangle (all cells, including zeros and bar color)
+                object_mask[:, left:right] = obj_id
+                obj_id += 1
+
+            return object_mask
+
+        else:
+            # Split the grid horizontally into 2-5 sections based on the color pattern of non-background pixels in each column.
+            # The idea: for each column, get the tuple of non-background colors (in order, top to bottom).
+            # When this pattern changes, start a new section.
+            # Assign a unique object id to each section.
+
+            # Find the background color (most common color)
+            unique, counts = np.unique(grid, return_counts=True)
+            bg_color = unique[np.argmax(counts)]
+
+            # Get unique non-background colors
+            unique_colors = np.unique(grid)
+            non_bg_colors = [c for c in unique_colors if c != bg_color]
+
+            def split_grid(n):
+                # Split the grid vertically into n equal sections.
+                nrows, ncols = grid.shape
+                object_mask = np.zeros_like(grid, dtype=int)
+                section_width = ncols // n
+                obj_id = 1
+                for i in range(n):
+                    left = i * section_width
+                    # For the last section, include any remaining columns due to integer division
+                    if i == n - 1:
+                        right = ncols
+                    else:
+                        right = (i + 1) * section_width
+                    object_mask[:, left:right] = obj_id
+                    obj_id += 1
+                return object_mask
+
+            def verify_color_membership(obj_mask, non_bg_colors):
+                # Verify that no non-background color appears in more than one object in obj_mask
+                for c in non_bg_colors:
+                    # Find all unique object ids where this color appears
+                    object_ids = np.unique(obj_mask[grid == c])
+                    # Remove 0 (background) from object_ids if present
+                    object_ids = object_ids[object_ids != 0]
+
+                    if len(object_ids) > 1:
+                        return False
+                    
+                return True
+
+            for n in range(2, 6):
+                obj_mask = split_grid(n)
+                if verify_color_membership(obj_mask, non_bg_colors):
+                    return obj_mask
+                
+            return obj_mask
+
+    @staticmethod
+    def split_grid_corners(grid, bar=True):
+        # Split the grid into 4 quadrants: upper left, upper right, lower left, lower right.
+        # If bar=True, ignore the central row and/or column if they form a cross of a distinct color.
+
+        nrows, ncols = grid.shape
+        object_mask = np.zeros_like(grid, dtype=int)
+
+        # Determine the center row and column
+        mid_row = nrows // 2
+        mid_col = ncols // 2
+
+        # If bar=True, try to detect a cross (central row and column of a distinct color)
+        bar_rows = []
+        bar_cols = []
+        if bar:
+            # Find the most common color (likely background)
+            unique, counts = np.unique(grid, return_counts=True)
+            bg_color = unique[np.argmax(counts)]
+
+            # Check for a row that is fully a non-background color and is in the center
+            for i in range(nrows):
+                if np.all(grid[i, :] == grid[i, 0]) and grid[i, 0] != bg_color:
+                    bar_rows.append(i)
+            # Check for a column that is fully a non-background color and is in the center
+            for j in range(ncols):
+                if np.all(grid[:, j] == grid[0, j]) and grid[0, j] != bg_color:
+                    bar_cols.append(j)
+
+            # If there is a bar row/col in the center, treat it as the cross
+            # Use the bar row/col closest to the center
+            if bar_rows:
+                # Pick the bar row closest to the center
+                bar_row = min(bar_rows, key=lambda x: abs(x - mid_row))
+            else:
+                bar_row = None
+            if bar_cols:
+                bar_col = min(bar_cols, key=lambda x: abs(x - mid_col))
+            else:
+                bar_col = None
+        else:
+            bar_row = None
+            bar_col = None
+
+        # Define the boundaries for the quadrants
+        # If there is a bar row/col, exclude them from the quadrants
+        if bar_row is not None:
+            top_rows = slice(0, bar_row)
+            bottom_rows = slice(bar_row + 1, nrows)
+        else:
+            top_rows = slice(0, mid_row)
+            bottom_rows = slice(mid_row, nrows)
+
+        if bar_col is not None:
+            left_cols = slice(0, bar_col)
+            right_cols = slice(bar_col + 1, ncols)
+        else:
+            left_cols = slice(0, mid_col)
+            right_cols = slice(mid_col, ncols)
+
+        # Assign object ids to each quadrant
+        obj_id = 1
+        # Upper left
+        object_mask[top_rows, left_cols] = obj_id
+        obj_id += 1
+        # Upper right
+        object_mask[top_rows, right_cols] = obj_id
+        obj_id += 1
+        # Lower left
+        object_mask[bottom_rows, left_cols] = obj_id
+        obj_id += 1
+        # Lower right
+        object_mask[bottom_rows, right_cols] = obj_id
+
+        return object_mask
+
+    @staticmethod
+    def split_grid_vertical(grid, bar=True):
+        # If bar=True: Evenly split the grid vertically based on horizontal bars of a distinct color.
+        # If bar=False: Try splitting into n=2,3,4,5 horizontal sections and see which splits non-background colors into distinct sections.
+
+        nrows, ncols = grid.shape
+
+        if bar:
+            def get_bar_color(grid):
+                # Find the color that is the least common (but still occurs) and for which there is a row that fully contains it
+                unique, counts = np.unique(grid, return_counts=True)
+                color_counts = dict(zip(unique, counts))
+                # Sort colors by increasing count (least common first)
+                sorted_colors = sorted(color_counts.items(), key=lambda x: x[1])
+                for color, _ in sorted_colors:
+                    # Check if there is a row fully filled with this color
+                    for i in range(nrows):
+                        if np.all(grid[i, :] == color):
+                            return color
+                return None
+
+            bar_color = get_bar_color(grid)
+            object_mask = np.zeros_like(grid, dtype=int)
+
+            # Find the rows that are entirely the bar color (horizontal bars)
+            bar_rows = []
+            for i in range(nrows):
+                if np.all(grid[i, :] == bar_color):
+                    bar_rows.append(i)
+
+            # Add -1 and nrows as boundaries for easier splitting
+            split_points = [-1] + bar_rows + [nrows]
+            obj_id = 1
+            for k in range(len(split_points) - 1):
+                top = split_points[k] + 1
+                bottom = split_points[k + 1]
+                if top >= bottom:
+                    continue
+                # For each region between bars, assign a unique object id to the full rectangle (all cells, including zeros and bar color)
+                object_mask[top:bottom, :] = obj_id
+                obj_id += 1
+
+            return object_mask
+
+        else:
+            # Use the same logic as split_grid_horizontal (but for horizontal splits)
+            # But select bg_color as the color that appears in the most number of distinct rows (y values)
+            unique = np.unique(grid)
+            max_rows = -1
+            bg_color = unique[0]
+            for color in unique:
+                rows_with_color = np.any(grid == color, axis=1)
+                num_rows = np.sum(rows_with_color)
+                if num_rows > max_rows:
+                    max_rows = num_rows
+                    bg_color = color
+
+            # Get unique non-background colors
+            unique_colors = np.unique(grid)
+            non_bg_colors = [c for c in unique_colors if c != bg_color]
+
+            def split_grid(n):
+                # Split the grid horizontally into n equal sections.
+                object_mask = np.zeros_like(grid, dtype=int)
+                section_height = nrows // n
+                obj_id = 1
+                for i in range(n):
+                    top = i * section_height
+                    # For the last section, include any remaining rows due to integer division
+                    if i == n - 1:
+                        bottom = nrows
+                    else:
+                        bottom = (i + 1) * section_height
+                    object_mask[top:bottom, :] = obj_id
+                    obj_id += 1
+                return object_mask
+
+            def verify_color_membership(obj_mask, non_bg_colors):
+                # Verify that no non-background color appears in more than one object in obj_mask
+                for c in non_bg_colors:
+                    # Find all unique object ids where this color appears
+                    object_ids = np.unique(obj_mask[grid == c])
+                    # Remove 0 (background) from object_ids if present
+                    object_ids = object_ids[object_ids != 0]
+                    if len(object_ids) > 1:
+                        return False
+                return True
+
+            for n in range(2, 6):
+                obj_mask = split_grid(n)
+                if verify_color_membership(obj_mask, non_bg_colors):
+                    return obj_mask
+
+            # If no valid split found, return the last tried mask (may be all zeros)
+            return obj_mask
+
+    @staticmethod
+    def get_objects_fixed_size_2col_shapes(grid, task_id):
+        if task_id in ['1c0d0a4b', '45737921', '60b61512']:
+            return ObjectDetector.get_fixed_square_placement(grid)
+        elif task_id in ['39a8645d', '662c240a', '760b3cac', 'a87f7484']:
+            return ObjectDetector.get_fixed_square_placement(grid, adjacency_allowed=True)
+        elif task_id in ['42918530', '4e45f183']:
+            return ObjectDetector.get_fixed_square_placement(grid, dim=5)
+        elif task_id in ['337b420f', '34b99a2b', '5d2a5c43', 'bbb1b8b6', 'cf98881b', 'e133d23d']:
+            return ObjectDetector.split_grid_horizontal(grid)
+        elif task_id in ['3428a4f5', '506d28a5', '6430c8c4', '99b1bc43']:
+            return ObjectDetector.split_grid_vertical(grid)
+        elif task_id in ['66f2d22f', 'e345f17b']:
+            return ObjectDetector.split_grid_horizontal(grid, bar=False)
+        elif task_id in ['6a11f6da', '94f9d214']:
+            return ObjectDetector.split_grid_vertical(grid, bar=False)
+        elif task_id in ['75b8110e', 'ea9794b1']:
+            return ObjectDetector.split_grid_corners(grid, bar=False)
+        
+    @staticmethod
     def check_special_case(grid, task_id, grid_idx):
         '''
         Implement object detection by code in a generalizable way is extremely difficult,
@@ -755,4 +1153,6 @@ class ObjectDetector:
             return ObjectDetector.get_objects_pattern_square_hollow(grid)
         elif category == 'pattern_plus_filled':
             return ObjectDetector.get_objects_pattern_plus_filled(grid)
+        elif category == 'fixed_size_2col_shapes':
+            return ObjectDetector.get_objects_fixed_size_2col_shapes(grid, task_id)
         

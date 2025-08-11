@@ -266,7 +266,7 @@ def sample_distinct_colors_adjacent_empty_training(training_path):
         ('dc2e9a9d', 2),
         ('f3e62deb', 2),
         ('fc754716', 1),
-        ('00d62c1b', 0)
+        ('00d62c1b', 0),
 
         # "semi-empty" shapes
         ('00dbd492', 0),
@@ -323,6 +323,37 @@ def sample_corner_objects_training(training_path):
 
     return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
     
+def sample_fixed_size_2col_shapes_training(training_path):
+    # To add as special case: ('e78887d1', 2)
+    training_examples = [
+        ('1c0d0a4b', 2),
+        ('45737921', 2),
+        ('337b420f', 0),
+        ('3428a4f5', 0),
+        ('34b99a2b', 0),
+        ('39a8645d', 0),
+        ('42918530', 2),
+        ('4e45f183', 2),
+        ('506d28a5', 0),
+        ('5d2a5c43', 0),
+        ('60b61512', 0),
+        ('6430c8c4', 0),
+        ('662c240a', 0),
+        ('66f2d22f', 0),
+        ('6a11f6da', 0),
+        ('75b8110e', 0),
+        ('760b3cac', 0),
+        ('94f9d214', 0),
+        ('99b1bc43', 0),
+        ('bbb1b8b6', 0),
+        ('cf98881b', 0),
+        ('e133d23d', 0),
+        ('e345f17b', 0),
+        ('ea9794b1', 0)
+    ]
+
+    return return_training_objects(training_examples, training_path, 'fixed_size_2col_shapes')
+
 
 def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None):
     if min_dim is None:
@@ -1112,6 +1143,83 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
                     object_mask[grid_row, grid_col] = obj_idx + 1
                     occupied_mask[grid_row, grid_col] = True
 
+    return grid, object_mask
+
+def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    a = np.random.uniform()
+
+    # TODO: temporary
+    a = 0.1
+    if a < 0.25:
+        return sample_fixed_size_2col_shapes_training(training_path)
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+    
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    # Generate 1 to 7 objects
+    num_objects = np.random.randint(1, 8)
+    
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+
+    # Rectangle object
+    max_obj_height = max(3, num_rows // 2)
+    max_obj_width = max(3, num_cols // 2)
+    obj_height = np.random.randint(3, max_obj_height + 1)
+    obj_width = np.random.randint(3, max_obj_width + 1)
+
+    # Choose exactly 2 random colors between 0 and 9 (inclusive)
+    two_colors = np.random.choice(range(10), 2, replace=False)
+
+    for obj_idx in range(num_objects):
+        obj_id = obj_idx + 1  # Object IDs start from 1
+
+        # Try to find a free spot for this object, up to N attempts
+        found_spot = False
+        max_attempts = 50
+        for _ in range(max_attempts):
+            start_row = np.random.randint(0, num_rows - obj_height + 1)
+            start_col = np.random.randint(0, num_cols - obj_width + 1)
+
+            # Check if this region overlaps with any existing object
+            region = object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width]
+            if np.any(region != 0):
+                continue  # Overlaps, try another position
+
+            # Fill the entire rectangle area with random colors from the two selected colors
+            shape_pixels = np.random.choice(two_colors, size=(obj_height, obj_width))
+            grid[start_row:start_row + obj_height, start_col:start_col + obj_width] = shape_pixels
+
+            # Fill the entire rectangle area in the object mask
+            object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+
+            found_spot = True
+            break  # Successfully placed this object
+
+        if not found_spot:
+            # No more space for this object, stop placing further objects
+            break
+            
     return grid, object_mask
 
 def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_same_shape=False):
