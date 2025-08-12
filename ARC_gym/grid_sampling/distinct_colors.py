@@ -324,7 +324,6 @@ def sample_corner_objects_training(training_path):
     return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
     
 def sample_fixed_size_2col_shapes_training(training_path):
-    # To add as special case: ('e78887d1', 2)
     training_examples = [
         ('1c0d0a4b', 2),
         ('45737921', 2),
@@ -349,7 +348,8 @@ def sample_fixed_size_2col_shapes_training(training_path):
         ('cf98881b', 0),
         ('e133d23d', 0),
         ('e345f17b', 0),
-        ('ea9794b1', 0)
+        ('ea9794b1', 0),
+        ('e78887d1', 2)
     ]
 
     return return_training_objects(training_examples, training_path, 'fixed_size_2col_shapes')
@@ -1154,8 +1154,6 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None):
 
     a = np.random.uniform()
 
-    # TODO: temporary
-    a = 0.1
     if a < 0.25:
         return sample_fixed_size_2col_shapes_training(training_path)
 
