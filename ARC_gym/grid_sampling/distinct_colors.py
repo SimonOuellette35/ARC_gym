@@ -322,7 +322,14 @@ def sample_corner_objects_training(training_path):
     ]
 
     return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
-    
+
+def sample_uniform_rect_noisy_bg_training(training_path):
+    training_examples = [
+        ('25094a63', 0),
+    ]
+
+    return return_training_objects(training_examples, training_path, 'uniform_color_noisy_bg')
+
 def sample_fixed_size_2col_shapes_training(training_path):
     training_examples = [
         ('1c0d0a4b', 2),
@@ -772,7 +779,9 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
         max_dim = 30
 
     a = np.random.uniform()
-
+    if a < 0.05:
+        return sample_uniform_rect_noisy_bg_training(training_path)
+    
     # Generate grid dimensions
     num_rows = np.random.randint(min_dim, max_dim + 1)
     num_cols = np.random.randint(min_dim, max_dim + 1)

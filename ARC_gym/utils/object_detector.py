@@ -833,6 +833,64 @@ class ObjectDetector:
             return obj_mask
 
     @staticmethod
+    def optimize_rectangle(grid, object_mask, i, j, obj_id):
+        color = grid[i, j]
+        nrows, ncols = grid.shape
+        max_width = 1
+
+        # Find the maximum width for which the rectangle (i, j) to (i+2, j+max_width-1) is all the same color
+        while True:
+            # Check if the rectangle would go out of bounds
+            if j + max_width > ncols:
+                break
+            region = grid[i:i+4, j:j+max_width]
+            if np.all(region == color):
+                max_width += 1
+            else:
+                break
+        max_width -= 1  # Last increment was invalid
+
+        max_height = 1
+        # Find the maximum height for which the rectangle (i, j) to (i+max_height-1, j+max_width) is all the same color
+        while True:
+            if i + max_height > nrows:
+                break
+            region = grid[i:i+max_height, j:j+max_width]
+            if np.all(region == color):
+                max_height += 1
+            else:
+                break
+        max_height -= 1  # Last increment was invalid
+
+        # Assign obj_id to the object_mask for the found rectangle, but only where it is zero
+        region = object_mask[i:i+max_height, j:j+max_width]
+        mask = (region == 0)
+        region[mask] = obj_id
+        object_mask[i:i+max_height, j:j+max_width] = region
+
+        return object_mask
+
+    @staticmethod
+    def get_objects_uniform_color_noisy_bg(grid, task_id):
+        object_mask = np.zeros_like(grid, dtype=int)
+        nrows, ncols = grid.shape
+        obj_id = 1
+
+        for i in range(nrows - 2):
+            for j in range(ncols - 2):
+                # Extract 3x3 region
+                region = grid[i:i+4, j:j+4]
+                # Check if all values are the same
+                if np.all(region == region[0, 0]):
+                    # Check if this region is not already assigned in object_mask
+                    if np.all(object_mask[i:i+4, j:j+4] == 0):
+                        # Call optimize_rectangle to update the object_mask
+                        object_mask = ObjectDetector.optimize_rectangle(grid, object_mask, i, j, obj_id)
+                        obj_id += 1
+        return object_mask
+
+        
+    @staticmethod
     def get_objects_fixed_size_2col_shapes(grid, task_id):
         if task_id in ['1c0d0a4b', '45737921', '60b61512']:
             return ObjectDetector.get_fixed_square_placement(grid)
@@ -1254,4 +1312,6 @@ class ObjectDetector:
             return ObjectDetector.get_objects_pattern_plus_filled(grid)
         elif category == 'fixed_size_2col_shapes':
             return ObjectDetector.get_objects_fixed_size_2col_shapes(grid, task_id)
+        elif category == 'uniform_color_noisy_bg':
+            return ObjectDetector.get_objects_uniform_color_noisy_bg(grid, task_id)
         
