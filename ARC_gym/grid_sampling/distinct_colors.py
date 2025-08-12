@@ -1236,6 +1236,76 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None):
             
     return grid, object_mask
 
+def sample_inner_color_borders(training_path, min_dim=None, max_dim=None):
+    if min_dim is None:
+        min_dim = 6
+
+    if max_dim is None:
+        max_dim = 7
+
+    # Generate grid dimensions
+    # num_rows == num_cols, and can be either 6 or 8, randomly chosen
+    size = np.random.choice([6, 8])
+    num_rows = num_cols = size
+
+    # Choose 3 distinct colors (not including the background)
+    available_colors = list(range(10))
+    border_colors = np.random.choice(available_colors, 3, replace=False)
+    color_a, color_b, color_c = border_colors
+
+    # For 6x6 or 8x8 grid, set the three borders explicitly
+    grid = np.full((num_rows, num_cols), 0)
+
+    if size == 6:
+        # Outermost border: color_a
+        grid[0, :] = color_a
+        grid[-1, :] = color_a
+        grid[:, 0] = color_a
+        grid[:, -1] = color_a
+
+        # Next inner border: color_b
+        grid[1, 1:-1] = color_b
+        grid[-2, 1:-1] = color_b
+        grid[1:-1, 1] = color_b
+        grid[1:-1, -2] = color_b
+
+        # Innermost border: color_c
+        grid[2, 2:-2] = color_c
+        grid[-3, 2:-2] = color_c
+        grid[2:-2, 2] = color_c
+        grid[2:-2, -3] = color_c
+
+        # Center (2x2) remains bg_color
+
+    elif size == 8:
+        # Outermost border: color_a
+        grid[0, :] = color_a
+        grid[-1, :] = color_a
+        grid[:, 0] = color_a
+        grid[:, -1] = color_a
+
+        # Next inner border: color_b
+        grid[1, 1:-1] = color_b
+        grid[-2, 1:-1] = color_b
+        grid[1:-1, 1] = color_b
+        grid[1:-1, -2] = color_b
+
+        # Innermost border: color_c (distinct from color_a and color_b)
+        grid[2, 2:-2] = color_c
+        grid[-3, 2:-2] = color_c
+        grid[2:-2, 2] = color_c
+        grid[2:-2, -3] = color_c
+
+        # Center (4x4) is color_a
+        grid[3:5, 3:5] = color_a
+
+    # Guarantee exactly 3 distinct colors in the grid (not counting bg_color)
+    # (color_a, color_b, and color_c for 6x6; color_a and color_b for 8x8, but color_c is not used in 8x8)
+
+    return grid, []
+
+
+
 def sample_four_corners(training_path, min_dim=None, max_dim=None):
     if min_dim is None:
         min_dim = 5
