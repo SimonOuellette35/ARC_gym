@@ -398,6 +398,8 @@ class GridSampler:
             return DCA.sample_corner_objects(self.training_path, min_dim, max_dim)
         elif selected_cat == 'fixed_size_2col_shapes':
             return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim)
+        elif selected_cat == 'four_corners':
+            return DCA.sample_four_corners(self.training_path, min_dim, max_dim)
 
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()

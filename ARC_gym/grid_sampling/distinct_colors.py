@@ -4,7 +4,7 @@ import numpy as np
 import json
 
 
-def return_training_objects(training_examples, training_path, obj_category):
+def return_training_objects(training_examples, training_path, obj_category, crop_augment=True):
     
     while True:
         selected_example = random.choice(training_examples)
@@ -325,10 +325,17 @@ def sample_corner_objects_training(training_path):
 
 def sample_uniform_rect_noisy_bg_training(training_path):
     training_examples = [
-        ('25094a63', 0),
+        ('25094a63', 0)
     ]
 
     return return_training_objects(training_examples, training_path, 'uniform_color_noisy_bg')
+
+def sample_four_corners_training(training_path):
+    training_examples = [
+        ('af902bf9', 0)
+    ]
+
+    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
 
 def sample_fixed_size_2col_shapes_training(training_path):
     training_examples = [
@@ -1228,6 +1235,106 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None):
             break
             
     return grid, object_mask
+
+def sample_four_corners(training_path, min_dim=None, max_dim=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    a = np.random.uniform()
+
+    if a < 0.05:
+       return sample_four_corners_training(training_path)
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+    
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    # Generate 1 to 5 objects
+    num_objects = np.random.randint(1, 6)
+    object_colors = []
+    
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+
+    # Rectangle object
+    max_obj_height = max(3, num_rows // 2)
+    max_obj_width = max(3, num_cols // 2)
+
+    for obj_idx in range(num_objects):
+        obj_id = obj_idx + 1  # Object IDs start from 1
+
+        obj_height = np.random.randint(3, max_obj_height + 1)
+        obj_width = np.random.randint(3, max_obj_width + 1)
+
+        # Try to find a free spot for this object, up to N attempts
+        found_spot = False
+        max_attempts = 50
+        for _ in range(max_attempts):
+            start_row = np.random.randint(0, num_rows - obj_height + 1)
+            start_col = np.random.randint(0, num_cols - obj_width + 1)
+
+            # Check if this region overlaps with any existing object
+            region = object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width]
+            if np.any(region != 0):
+                continue  # Overlaps, try another position
+
+            # Fill the entire rectangle area in the object mask (the full rectangle is the object)
+            object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+
+            # Now, draw only the 4 corners in the grid
+            # Decide if all corners are the same color or different colors
+            if np.random.rand() < 0.5:
+                # All corners same color
+                obj_color = object_colors[obj_idx]
+                grid[start_row, start_col] = obj_color  # top-left
+                grid[start_row, start_col + obj_width - 1] = obj_color  # top-right
+                grid[start_row + obj_height - 1, start_col] = obj_color  # bottom-left
+                grid[start_row + obj_height - 1, start_col + obj_width - 1] = obj_color  # bottom-right
+            else:
+                # All corners different colors
+                # Pick 4 unique colors (excluding bg_color and already used for this object if possible)
+                available_colors = list(range(10))
+                if bg_color in available_colors:
+                    available_colors.remove(bg_color)
+                # Remove the object's main color if possible, to maximize color diversity
+                if object_colors[obj_idx] in available_colors:
+                    available_colors.remove(object_colors[obj_idx])
+                # If not enough colors, allow repeats
+                if len(available_colors) < 4:
+                    corner_colors = np.random.choice(list(range(10)), 4, replace=True)
+                else:
+                    corner_colors = np.random.choice(available_colors, 4, replace=False)
+                grid[start_row, start_col] = corner_colors[0]  # top-left
+                grid[start_row, start_col + obj_width - 1] = corner_colors[1]  # top-right
+                grid[start_row + obj_height - 1, start_col] = corner_colors[2]  # bottom-left
+                grid[start_row + obj_height - 1, start_col + obj_width - 1] = corner_colors[3]  # bottom-right
+
+            found_spot = True
+            break  # Successfully placed this object
+
+        if not found_spot:
+            # No more space for this object, stop placing further objects
+            break
+            
+    return grid, object_mask
+   
 
 def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_same_shape=False):
     if min_dim is None:
