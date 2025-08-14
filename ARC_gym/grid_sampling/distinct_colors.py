@@ -325,7 +325,8 @@ def sample_corner_objects_training(training_path):
 
 def sample_uniform_rect_noisy_bg_training(training_path):
     training_examples = [
-        ('25094a63', 0)
+        ('25094a63', 0),
+        ('8731374e', 0)
     ]
 
     return return_training_objects(training_examples, training_path, 'uniform_color_noisy_bg')
@@ -336,6 +337,29 @@ def sample_four_corners_training(training_path):
     ]
 
     return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
+
+def sample_single_object_training(training_path):
+    training_examples = [
+        ('11852cab', 1),
+        ('150deff5', 2),
+        ('19bb5feb', 0),
+        ('1c56ad9f', 2),
+        ('1cf80156', 0),
+        ('2013d3e2', 0),
+        ('25d487eb', 0),
+        ('2697da3f', 0),
+        ('28bf18c6', 0),
+        ('396d80d7', 0),
+        ('4938f0c2', 2),
+        ('4c5c2cf0', 2),
+        ('73182012', 0),
+        ('7468f01a', 0),
+        ('bf32578f', 2),
+        ('e40b9e2f', 2),
+        ('e7dd8335', 2)
+    ]
+
+    return return_training_objects(training_examples, training_path, 'single_object')
 
 def sample_fixed_size_2col_shapes_training(training_path):
     training_examples = [
@@ -778,7 +802,153 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
             
     return grid, object_mask
 
-def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empty=False):
+def sample_single_object(training_path, min_dim=None, max_dim=None):
+    if min_dim is None:
+        min_dim = 3
+
+    if max_dim is None:
+        max_dim = 30
+
+    a = np.random.uniform()
+
+    if a < 0.25:
+        return sample_single_object_training(training_path)
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+    
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    num_objects = 1
+    object_colors = []
+    
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+
+    for obj_idx in range(num_objects):
+        obj_color = object_colors[obj_idx]
+        obj_id = obj_idx + 1  # Object IDs start from 1
+
+        # 20% chance for rectangle, 80% for random shape
+        if np.random.random() < 0.2:
+            # Rectangle object
+            max_obj_height = max(1, num_rows // num_objects)
+            max_obj_width = max(1, num_cols // num_objects)
+
+            obj_height = np.random.randint(1, max_obj_height + 1)
+            obj_width = np.random.randint(1, max_obj_width + 1)
+
+            # Random position for rectangle
+            start_row = np.random.randint(0, num_rows - obj_height + 1)
+            start_col = np.random.randint(0, num_cols - obj_width + 1)
+
+            # 50% chance for uniform color, 50% for random colors
+            if np.random.random() < 0.5:
+                # Uniform color
+                grid[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_color
+            else:
+                # Random colors (not background)
+                available_colors = [c for c in range(10) if c != bg_color]
+                random_rect = np.random.choice(available_colors, size=(obj_height, obj_width))
+                grid[start_row:start_row + obj_height, start_col:start_col + obj_width] = random_rect
+
+            object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+
+        else:
+            # Random shape object (diagonally adjacent pixels)
+            max_obj_size = max(1, (num_rows * num_cols) // (num_objects * 4))  # Ensure objects fit
+            obj_size = np.random.randint(1, max_obj_size + 1)
+
+            # Find a starting position
+            start_row = np.random.randint(0, num_rows)
+            start_col = np.random.randint(0, num_cols)
+
+            # Generate random shape using flood fill approach (border only)
+            visited = set()
+            queue = [(start_row, start_col)]
+            pixels_placed = 0
+            shape_pixels = set()  # Store all pixels that would be part of the shape
+
+            # First pass: determine the full shape
+            while queue and pixels_placed < obj_size:
+                row, col = queue.pop(0)
+
+                if (row, col) in visited or row < 0 or row >= num_rows or col < 0 or col >= num_cols:
+                    continue
+
+                if grid[row, col] != bg_color:  # Already occupied
+                    continue
+
+                visited.add((row, col))
+                shape_pixels.add((row, col))
+                pixels_placed += 1
+
+                # Add adjacent positions (including diagonal)
+                for dr in [-1, 0, 1]:
+                    for dc in [-1, 0, 1]:
+                        if dr == 0 and dc == 0:
+                            continue
+                        new_row, new_col = row + dr, col + dc
+                        if (new_row, new_col) not in visited:
+                            queue.append((new_row, new_col))
+
+            # 50% chance for uniform color, 50% for random colors
+            if np.random.random() < 0.5:
+                # Uniform color for all border pixels
+                for row, col in shape_pixels:
+                    is_border = False
+                    for dr in [-1, 0, 1]:
+                        for dc in [-1, 0, 1]:
+                            if dr == 0 and dc == 0:
+                                continue
+                            neighbor_row, neighbor_col = row + dr, col + dc
+                            if (neighbor_row < 0 or neighbor_row >= num_rows or 
+                                neighbor_col < 0 or neighbor_col >= num_cols or
+                                (neighbor_row, neighbor_col) not in shape_pixels):
+                                is_border = True
+                                break
+                        if is_border:
+                            break
+                    if is_border:
+                        grid[row, col] = obj_color
+                        object_mask[row, col] = obj_id
+            else:
+                # Random color for each border pixel (not background)
+                available_colors = [c for c in range(10) if c != bg_color]
+                for row, col in shape_pixels:
+                    is_border = False
+                    for dr in [-1, 0, 1]:
+                        for dc in [-1, 0, 1]:
+                            if dr == 0 and dc == 0:
+                                continue
+                            neighbor_row, neighbor_col = row + dr, col + dc
+                            if (neighbor_row < 0 or neighbor_row >= num_rows or 
+                                neighbor_col < 0 or neighbor_col >= num_cols or
+                                (neighbor_row, neighbor_col) not in shape_pixels):
+                                is_border = True
+                                break
+                        if is_border:
+                            break
+                    if is_border:
+                        grid[row, col] = np.random.choice(available_colors)
+                        object_mask[row, col] = obj_id
+
+    return grid, object_mask
+
+def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empty=False, num_objects=None):
     if min_dim is None:
         min_dim = 6
 
@@ -786,7 +956,7 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
         max_dim = 30
 
     a = np.random.uniform()
-    if a < 0.05:
+    if a < 0.05 and num_objects is None:
         return sample_uniform_rect_noisy_bg_training(training_path)
     
     # Generate grid dimensions
@@ -815,7 +985,9 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
     object_mask = np.zeros((num_rows, num_cols), dtype=int)
 
     # Generate 1 to 6 objects
-    num_objects = np.random.randint(1, 7)
+    if num_objects is None:
+        num_objects = np.random.randint(1, 7)
+
     object_colors = []
     
     # Generate unique colors for objects (different from background)
@@ -1303,8 +1475,6 @@ def sample_inner_color_borders(training_path, min_dim=None, max_dim=None):
     # (color_a, color_b, and color_c for 6x6; color_a and color_b for 8x8, but color_c is not used in 8x8)
 
     return grid, []
-
-
 
 def sample_four_corners(training_path, min_dim=None, max_dim=None):
     if min_dim is None:
