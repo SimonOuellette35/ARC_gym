@@ -370,6 +370,10 @@ class GridSampler:
             return DCA.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim)
         elif selected_cat == 'distinct_colors_adjacent_empty':
             return DCA.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim)
+        if selected_cat == 'distinct_colors_adjacent_fill':
+            return DCA.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim, fill_mask=True)
+        elif selected_cat == 'distinct_colors_adjacent_empty_fill':
+            return DCA.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim, fill_mask=True)
         elif selected_cat == 'uniform_rect_noisy_bg':
             return DCA.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=False)
         elif selected_cat == 'window_noisy_bg':

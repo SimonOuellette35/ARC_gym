@@ -207,7 +207,7 @@ def get_subgrid(grid, object_mask):
     return grid, object_mask
     
 
-def sample_distinct_colors_adjacent_training(training_path):
+def sample_distinct_colors_adjacent_training(training_path, fill_mask):
     training_examples = [
         ('4347f46a', 0),
         ('e74e1818', 0),
@@ -245,9 +245,12 @@ def sample_distinct_colors_adjacent_training(training_path):
         ('e41c6fd3', 0)
     ]
 
-    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent')
+    if fill_mask:
+        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_fill')
+    else:
+        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent')
 
-def sample_distinct_colors_adjacent_empty_training(training_path):
+def sample_distinct_colors_adjacent_empty_training(training_path, fill_mask):
     training_examples = [
         # simple empty shapes
         ('025d127b', 2),
@@ -273,7 +276,6 @@ def sample_distinct_colors_adjacent_empty_training(training_path):
         ('0a2355a6', 2),
         ('18419cfa', 2),
         ('1c56ad9f', 0),
-        ('8a371977', 0),
         ('42918530', 2),
         ('7d1f7ee8', 2),
         ('b7fb29bc', 0),
@@ -281,7 +283,10 @@ def sample_distinct_colors_adjacent_empty_training(training_path):
         ('e7dd8335', 0)
     ]
 
-    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
+    if fill_mask:
+        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty_fill')
+    else:
+        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
 
 def sample_incomplete_rectangles_training(training_path):
     training_examples = [
@@ -393,7 +398,7 @@ def sample_fixed_size_2col_shapes_training(training_path):
     return return_training_objects(training_examples, training_path, 'fixed_size_2col_shapes')
 
 
-def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None):
+def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, fill_mask=False):
     if min_dim is None:
         min_dim = 3
 
@@ -403,7 +408,7 @@ def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None):
     a = np.random.uniform()
 
     if a < 0.25:
-        return sample_distinct_colors_adjacent_training(training_path)
+        return sample_distinct_colors_adjacent_training(training_path, fill_mask)
 
     # Generate grid dimensions
     num_rows = np.random.randint(min_dim, max_dim + 1)
@@ -512,7 +517,12 @@ def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None):
                 # Only fill border pixels
                 if is_border:
                     grid[row, col] = obj_color
-                    object_mask[row, col] = obj_id
+                    if fill_mask:
+                        # For fill_mask=True, the object_mask should include the whole shape, not just the border
+                        for r, c in shape_pixels:
+                            object_mask[r, c] = obj_id
+                    else:
+                        object_mask[row, col] = obj_id
 
     return grid, object_mask
 
@@ -719,7 +729,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
     return grid, object_mask
 
 
-def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=None):
+def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=None, fill_mask = False):
     if min_dim is None:
         min_dim = 3
 
@@ -729,7 +739,7 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
     a = np.random.uniform()
 
     if a < 0.25:
-        return sample_distinct_colors_adjacent_empty_training(training_path)
+        return sample_distinct_colors_adjacent_empty_training(training_path, fill_mask)
 
     # Generate grid dimensions
     num_rows = np.random.randint(min_dim, max_dim + 1)
@@ -770,7 +780,7 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
         # Try to find a free spot for this object, up to N attempts
         found_spot = False
         max_attempts = 50
-        for attempt in range(max_attempts):
+        for _ in range(max_attempts):
             start_row = np.random.randint(0, num_rows - obj_height + 1)
             start_col = np.random.randint(0, num_cols - obj_width + 1)
 
@@ -791,7 +801,18 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
                 grid[start_row + 1:start_row + obj_height - 1, start_col + obj_width - 1] = obj_color
 
             # Fill the entire rectangle area in the object mask (not just the border)
-            object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+            if fill_mask:
+                object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+            else:
+                # Fill only the border (non-background) pixels in the object mask
+                # Top and bottom rows
+                object_mask[start_row, start_col:start_col + obj_width] = obj_id
+                object_mask[start_row + obj_height - 1, start_col:start_col + obj_width] = obj_id
+
+                # Left and right columns (excluding corners)
+                if obj_height > 2:
+                    object_mask[start_row + 1:start_row + obj_height - 1, start_col] = obj_id
+                    object_mask[start_row + 1:start_row + obj_height - 1, start_col + obj_width - 1] = obj_id
 
             found_spot = True
             break  # Successfully placed this object

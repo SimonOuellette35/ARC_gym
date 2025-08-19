@@ -5,7 +5,7 @@ from scipy.ndimage import label
 class ObjectDetector:
 
     @staticmethod
-    def find_objects_for_color(grid, object_mask, c, bg_color):
+    def find_objects_for_color(grid, object_mask, c, bg_color, fill_mask):
         if c == bg_color:
             return object_mask
             
@@ -54,8 +54,15 @@ class ObjectDetector:
                         stack.append((curr_i + di, curr_j + dj))
             
             # Mark this component as an object
-            for obj_i, obj_j in component:
-                object_mask[obj_i, obj_j] = object_id
+            if fill_mask:
+                # Mark the whole object region (all pixels in the component)
+                for obj_i, obj_j in component:
+                    object_mask[obj_i, obj_j] = object_id
+            else:
+                # Only mark non-background pixels in the component
+                for obj_i, obj_j in component:
+                    if grid[obj_i, obj_j] != bg_color:
+                        object_mask[obj_i, obj_j] = object_id
                 
             object_id += 1
 
@@ -113,7 +120,7 @@ class ObjectDetector:
         return object_mask
 
     @staticmethod
-    def get_objects_distinct_colors_adjacent(grid):
+    def get_objects_distinct_colors_adjacent(grid, fill_mask=False):
         # Find the background color (most common color in the grid)
         unique_colors, counts = np.unique(grid, return_counts=True)
         bg_color = unique_colors[np.argmax(counts)]
@@ -121,12 +128,12 @@ class ObjectDetector:
         object_mask = np.zeros_like(grid)
 
         for c in unique_colors:
-            object_mask = ObjectDetector.find_objects_for_color(grid, object_mask, c, bg_color)
+            object_mask = ObjectDetector.find_objects_for_color(grid, object_mask, c, bg_color, fill_mask)
 
         return object_mask
 
     @staticmethod
-    def get_objects_distinct_colors_adjacent_empty(grid):
+    def get_objects_distinct_colors_adjacent_empty_fill(grid):
         """
         Find all outer containment objects. Specifically, find all object borders
         of a uniform color. Everything located inside (regardless of color) of 
@@ -135,7 +142,7 @@ class ObjectDetector:
         Returns object mask where background cells are 0 and object cells
         are incremental values starting from 1, 2, etc.
         """
-        unique_colors, counts = np.unique(grid, return_counts=True)
+        unique_colors, _ = np.unique(grid, return_counts=True)
         
         object_mask = np.zeros_like(grid)
         object_id = 1
@@ -147,9 +154,6 @@ class ObjectDetector:
             color_positions = np.where(grid == color)
             if len(color_positions[0]) == 0:
                 continue
-            
-            # Create a binary mask for this color
-            color_mask = (grid == color).astype(np.uint8)
             
             # Find connected components of this color
             visited = np.zeros_like(grid, dtype=bool)
@@ -172,11 +176,11 @@ class ObjectDetector:
                     for pi, pj in component_pixels + interior_pixels:
                         if 0 <= pi < grid.shape[0] and 0 <= pj < grid.shape[1]:
                             object_mask[pi, pj] = object_id
+
                     object_id += 1
-        
+
         # Handle background exclusion based on distinct IDs and presence of 0 values
         unique_ids = np.unique(object_mask)
-        
         if len(unique_ids) == 1:
             # Only 1 distinct id: return as is
             return object_mask
@@ -187,7 +191,81 @@ class ObjectDetector:
             # > 1 distinct id and no 0 values: decrement all ids by 1
             object_mask = object_mask - 1
             return object_mask
-    
+
+    @staticmethod
+    def get_objects_distinct_colors_adjacent_empty(grid):
+        # All 8-connected pixels of a same color belong to a same object
+
+        unique_colors, counts = np.unique(grid, return_counts=True)
+        bg_color = unique_colors[np.argmax(counts)]
+
+        object_mask = np.zeros_like(grid, dtype=np.int32)
+        visited = np.zeros_like(grid, dtype=bool)
+        object_id = 1
+
+        rows, cols = grid.shape
+        for color in unique_colors:
+            if color == bg_color:
+                continue  # background stays 0 in object_mask
+
+            for i in range(rows):
+                for j in range(cols):
+                    if grid[i, j] == color and not visited[i, j]:
+                        # Start a new object: flood fill all 8-connected pixels of this color
+                        stack = [(i, j)]
+                        component_pixels = []
+                        min_row, max_row = i, i
+                        min_col, max_col = j, j
+                        while stack:
+                            ci, cj = stack.pop()
+                            if (0 <= ci < rows and 0 <= cj < cols and
+                                not visited[ci, cj] and grid[ci, cj] == color):
+                                visited[ci, cj] = True
+                                component_pixels.append((ci, cj))
+                                min_row = min(min_row, ci)
+                                max_row = max(max_row, ci)
+                                min_col = min(min_col, cj)
+                                max_col = max(max_col, cj)
+                                # Add 8-connected neighbors
+                                for di in [-1, 0, 1]:
+                                    for dj in [-1, 0, 1]:
+                                        if di == 0 and dj == 0:
+                                            continue
+                                        ni, nj = ci + di, cj + dj
+                                        if (0 <= ni < rows and 0 <= nj < cols and
+                                            not visited[ni, nj] and grid[ni, nj] == color):
+                                            stack.append((ni, nj))
+                        # After finding the object's region, set all non-background colored pixels in the region to object_id
+                        for ri in range(min_row, max_row + 1):
+                            for rj in range(min_col, max_col + 1):
+                                if grid[ri, rj] != bg_color:
+                                    object_mask[ri, rj] = object_id
+                        object_id += 1
+
+        # For each object_id, only process if all four corners of its bounding box are non-background pixels
+        for oid in range(1, object_id):
+            # Find the bounding box of the region where object_mask == oid
+            positions = np.argwhere(object_mask == oid)
+            if positions.size == 0:
+                continue
+            min_row, min_col = positions.min(axis=0)
+            max_row, max_col = positions.max(axis=0)
+            # Check if all four corners are non-background pixels
+            corners = [
+                (min_row, min_col),
+                (min_row, max_col),
+                (max_row, min_col),
+                (max_row, max_col)
+            ]
+            if all(grid[ri, rj] != bg_color for ri, rj in corners):
+                # For all non-bg colored pixels in this region, set object_mask to oid
+                for ri in range(min_row, max_row + 1):
+                    for rj in range(min_col, max_col + 1):
+                        if grid[ri, rj] != bg_color:
+                            object_mask[ri, rj] = oid
+
+        return object_mask
+
     @staticmethod
     def _flood_fill_component(grid, start_i, start_j, target_color, visited):
         """Helper method to find a connected component of target_color starting from (start_i, start_j)"""
@@ -947,12 +1025,12 @@ class ObjectDetector:
             return ObjectDetector.split_grid_corners(grid, bar=False)
         
     @staticmethod
-    def check_special_case(grid, task_id, grid_idx):
+    def check_special_case(grid, task_id, grid_idx, fill_mask):
         '''
         Implement object detection by code in a generalizable way is extremely difficult,
         and sometimes it's easier to just hardcode special cases for the object masks...
         '''
-        if task_id == 'a680ac02':
+        if task_id == 'a680ac02' and fill_mask:
             if grid_idx == 0:
                 return [
                     [1, 1, 1, 1],
@@ -995,7 +1073,51 @@ class ObjectDetector:
                     [3, 3, 3, 3]
                 ]
 
-        elif task_id == '7d1f7ee8':
+        if task_id == 'a680ac02' and not fill_mask:
+            if grid_idx == 0:
+                return [
+                    [1, 1, 1, 1],
+                    [1, 0, 0, 1],
+                    [1, 0, 0, 1],
+                    [1, 1, 1, 1],
+                    [2, 2, 2, 2],
+                    [2, 0, 0, 2],
+                    [2, 0, 0, 2],
+                    [2, 2, 2, 2]
+                ]
+
+            elif grid_idx == 1:
+                return [
+                    [1, 1, 1, 1, 2, 2, 2, 2],
+                    [1, 0, 0, 1, 2, 0, 0, 2],
+                    [1, 0, 0, 1, 2, 0, 0, 2],
+                    [1, 1, 1, 1, 2, 2, 2, 2]
+                ]
+            elif grid_idx == 2:
+                return [
+                    [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
+                    [1, 0, 0, 1, 2, 0, 0, 2, 3, 0, 0, 3],
+                    [1, 0, 0, 1, 2, 0, 0, 2, 3, 0, 0, 3],
+                    [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3]
+                ]
+            else:
+                return [
+                    [1, 1, 1, 1],
+                    [1, 0, 0, 1],
+                    [1, 0, 0, 1],
+                    [1, 1, 1, 1],
+                    [2, 2, 2, 2],
+                    [2, 0, 0, 2],
+                    [2, 0, 0, 2],
+                    [2, 2, 2, 2],
+                    [3, 3, 3, 3],
+                    [3, 0, 0, 3],
+                    [3, 0, 0, 3],
+                    [3, 3, 3, 3]
+                ]
+
+
+        elif task_id == '7d1f7ee8' and fill_mask:
             if grid_idx == 0:   # input 0
                 return [
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1144,8 +1266,8 @@ class ObjectDetector:
                     [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                     [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                     [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 4, 0, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 4, 0, 0],
                     [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                     [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
                     [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
@@ -1163,7 +1285,177 @@ class ObjectDetector:
                     [0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                                                                                                                                            
                 ]
-        elif task_id == '868de0fa' and grid_idx == 0:
+
+        elif task_id == '7d1f7ee8' and not fill_mask:
+            if grid_idx == 0:   # input 0
+                return [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 2, 2, 2, 2, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 2, 0, 0, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 2, 0, 0, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 2, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 2, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 3, 3, 3, 3, 3, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 3, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 3, 0],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 3, 0, 0, 0, 3, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                ]
+
+            elif grid_idx == 1: # target 0
+                return [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 2, 2, 2, 2, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 2, 0, 0, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 2, 0, 0, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 2, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 2, 2, 2, 2, 2, 2, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 3, 3, 3, 3, 3, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 3, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 3, 0, 0, 0, 3, 0],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 3, 0, 0, 0, 3, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                ]
+            elif grid_idx == 2: # input 1
+                return [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3],
+                    [0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 3, 0, 3, 3, 3, 3, 3, 0, 3],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 3, 3, 3, 3, 3, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3],
+                    [0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                ]
+
+            elif grid_idx == 3: # target 1
+                return [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3],
+                    [0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3],
+                    [0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 3, 0, 3, 3, 3, 3, 3, 0, 3],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 3, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 3, 3, 3, 3, 3, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3],
+                    [0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3],
+                    [0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                ]
+
+            elif grid_idx == 4: # input 2
+                return [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                ]
+            elif grid_idx == 5: # target 2
+                return [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                ]
+            else:   # test grid
+                return [
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 4, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 4, 0, 0],
+                    [0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0],
+                    [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0],
+                    [0, 0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 0, 3, 0, 0, 3, 3, 3, 0, 0, 3, 0, 0, 0],
+                    [0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 3, 0, 0, 3, 0, 3, 0, 0, 3, 0, 0, 0],
+                    [0, 0, 2, 0, 2, 0, 0, 0, 2, 2, 0, 2, 0, 0, 2, 0, 3, 0, 0, 3, 3, 3, 0, 0, 3, 0, 0, 0],
+                    [0, 0, 2, 0, 2, 0, 0, 0, 2, 2, 0, 2, 0, 0, 2, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0],
+                    [0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0],
+                    [0, 0, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                                                                                                                                            
+                ]
+
+        elif task_id == '868de0fa' and grid_idx == 0 and fill_mask:
             return [
                 [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                 [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
@@ -1177,6 +1469,22 @@ class ObjectDetector:
                 [3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0],
                 [3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0]
             ]
+
+        elif task_id == '868de0fa' and grid_idx == 0 and not fill_mask:
+            return [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 1, 0, 2, 2, 2, 2, 0, 0],
+                [0, 1, 1, 1, 0, 2, 0, 0, 2, 0, 0],
+                [0, 0, 0, 0, 0, 2, 0, 0, 2, 0, 0],
+                [0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0],
+                [3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0],
+                [3, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+                [3, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+                [3, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0],
+                [3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0]
+            ]
+
         elif task_id == '8fbca751':
             if grid_idx == 0:
                 return [
@@ -1454,12 +1762,133 @@ class ObjectDetector:
                     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                    
                 ]
 
+        elif task_id == 'a3f84088' and grid_idx == 1 and fill_mask:
+
+            return [
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1]
+            ]
+
+        elif task_id == 'a3f84088' and grid_idx == 1 and not fill_mask:
+
+            return [
+                [1, 1, 1, 1, 1, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 1, 1]
+            ]
+
+        elif task_id == 'fc754716' and fill_mask:
+
+            if grid_idx == 0:
+                return [
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1]
+                ]
+            elif grid_idx == 1:
+                return [
+                    [1, 1, 1],
+                    [1, 1, 1],
+                    [1, 1, 1],
+                    [1, 1, 1],
+                    [1, 1, 1]                    
+                ]
+            elif grid_idx == 2:
+                return [
+                    [1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1]
+                ]
+
+            elif grid_idx == 3:
+                return [
+                    [1, 1, 1],
+                    [1, 1, 1],
+                    [1, 1, 1]
+                ]
+
+
+            elif grid_idx == 4:
+                return [
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 1, 1, 1, 1, 1, 1]
+                ]
+
+        elif task_id == 'fc754716' and not fill_mask:
+
+            if grid_idx == 0:
+                return [
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1]
+                ]
+            elif grid_idx == 1:
+                return [
+                    [1, 1, 1],
+                    [1, 0, 1],
+                    [1, 0, 1],
+                    [1, 0, 1],
+                    [1, 1, 1]                    
+                ]
+            elif grid_idx == 2:
+                return [
+                    [1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1]
+                ]
+
+            elif grid_idx == 3:
+                return [
+                    [1, 1, 1],
+                    [1, 0, 1],
+                    [1, 1, 1]
+                ]
+
+            elif grid_idx == 4:
+                return [
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1]
+                ]
+
+
         return None
 
     @staticmethod
     def get_objects(grid, category, task_id='', grid_idx=0):
+        fill_mask = False
+        if category.endswith('fill'):
+            fill_mask = True
 
-        result = ObjectDetector.check_special_case(grid, task_id, grid_idx)
+        result = ObjectDetector.check_special_case(grid, task_id, grid_idx, fill_mask)
         if result is not None:
             return np.array(result)
         
@@ -1467,6 +1896,10 @@ class ObjectDetector:
             return ObjectDetector.get_objects_distinct_colors_adjacent(grid)
         elif category == 'distinct_colors_adjacent_empty':
             return ObjectDetector.get_objects_distinct_colors_adjacent_empty(grid)
+        if category == 'distinct_colors_adjacent_fill':
+            return ObjectDetector.get_objects_distinct_colors_adjacent(grid, fill_mask=True)
+        elif category == 'distinct_colors_adjacent_empty_fill':
+            return ObjectDetector.get_objects_distinct_colors_adjacent_empty_fill(grid)
         elif category == 'distinct_colors':
             return ObjectDetector.get_objects_distinct_colors(grid)
         elif category == 'incomplete_rectangles':
