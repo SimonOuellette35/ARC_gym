@@ -410,6 +410,8 @@ class GridSampler:
             return DCA.sample_single_object(self.training_path)
         elif selected_cat == 'single_object_noisy_bg':
             return DCA.sample_uniform_rect_noisy_bg(self.training_path, num_objects=1)
+        elif selected_cat == 'simple_filled_rectangles':
+            return DCA.sample_simple_filled_rectangles(self.training_path, min_dim, max_dim)
         
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()

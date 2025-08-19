@@ -969,6 +969,75 @@ def sample_single_object(training_path, min_dim=None, max_dim=None):
 
     return grid, object_mask
 
+def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None):
+    if min_dim is None:
+        min_dim = 6
+
+    if max_dim is None:
+        max_dim = 30
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color (no random pixels in background)
+    grid = np.full((num_rows, num_cols), bg_color)
+    
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    # Generate 1 to 6 objects
+    num_objects = np.random.randint(1, 7)
+
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+
+    max_attempts_per_object = 50  # Prevent infinite loops if grid is crowded
+
+    for obj_idx in range(num_objects):
+        obj_color = object_colors[obj_idx]
+        obj_id = obj_idx + 1  # Object IDs start from 1
+
+        # Generate a filled rectangle of a uniform, randomly selected color.
+        max_obj_height = max(3, num_rows // 3)
+        max_obj_width = max(3, num_cols // 3)
+
+        for _ in range(max_attempts_per_object):
+            obj_height = np.random.randint(3, max_obj_height + 1)
+            obj_width = np.random.randint(3, max_obj_width + 1)
+
+            # Find all possible top-left positions where the rectangle fits
+            possible_rows = num_rows - obj_height + 1
+            possible_cols = num_cols - obj_width + 1
+            if possible_rows <= 0 or possible_cols <= 0:
+                continue  # Object too big for grid
+
+            # Try a random position
+            start_row = np.random.randint(0, possible_rows)
+            start_col = np.random.randint(0, possible_cols)
+
+            # Check for overlap in object_mask
+            region = object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width]
+            if np.any(region != 0):
+                continue  # Overlaps with existing object, try again
+
+            # Full rectangle (filled)
+            grid[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_color
+            object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+
+            break
+
+    return grid, object_mask
+
+
 def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empty=False, num_objects=None):
     if min_dim is None:
         min_dim = 6
