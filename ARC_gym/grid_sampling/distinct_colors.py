@@ -977,7 +977,7 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
         max_dim = 30
 
     a = np.random.uniform()
-    if a < 0.05 and num_objects is None:
+    if a < 0.05 and num_objects is None and not empty:
         return sample_uniform_rect_noisy_bg_training(training_path)
     
     # Generate grid dimensions
@@ -1046,12 +1046,11 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
             if np.any(region != 0):
                 continue  # Overlaps with existing object, try again
 
-            # No overlap, place the object
-            object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
-
             if not empty:
                 # Full rectangle
                 grid[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_color
+                # No overlap, place the object
+                object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
             else:
                 # Empty rectangle (border only)
                 # Top and bottom rows
@@ -1061,6 +1060,15 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
                 if obj_height > 2:
                     grid[start_row + 1:start_row + obj_height - 1, start_col] = obj_color
                     grid[start_row + 1:start_row + obj_height - 1, start_col + obj_width - 1] = obj_color
+
+                # For empty rectangles, set the object_mask to the border (1s on border, 0s inside)
+                # Top and bottom rows
+                object_mask[start_row, start_col:start_col + obj_width] = obj_id
+                object_mask[start_row + obj_height - 1, start_col:start_col + obj_width] = obj_id
+                # Left and right columns (excluding corners already set)
+                if obj_height > 2:
+                    object_mask[start_row + 1:start_row + obj_height - 1, start_col] = obj_id
+                    object_mask[start_row + 1:start_row + obj_height - 1, start_col + obj_width - 1] = obj_id
 
             break
 
