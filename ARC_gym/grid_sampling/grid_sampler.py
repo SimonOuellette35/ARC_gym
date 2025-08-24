@@ -400,8 +400,12 @@ class GridSampler:
             return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_filled')
         elif selected_cat == 'corner_objects':
             return DCA.sample_corner_objects(self.training_path, min_dim, max_dim)
-        elif selected_cat == 'fixed_size_2col_shapes':
-            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim)
+        elif selected_cat == 'fixed_size_2col_shapes3x3':
+            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3)
+        elif selected_cat == 'fixed_size_2col_shapes4x4':
+            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4)
+        elif selected_cat == 'fixed_size_2col_shapes5x5':
+            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5)
         elif selected_cat == 'four_corners':
             return DCA.sample_four_corners(self.training_path, min_dim, max_dim)
         elif selected_cat == 'inner_color_borders':

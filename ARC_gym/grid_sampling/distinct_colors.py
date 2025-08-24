@@ -366,34 +366,43 @@ def sample_single_object_training(training_path):
 
     return return_training_objects(training_examples, training_path, 'single_object')
 
-def sample_fixed_size_2col_shapes_training(training_path):
-    training_examples = [
-        ('1c0d0a4b', 2),
-        ('45737921', 2),
-        ('337b420f', 0),
-        ('3428a4f5', 0),
-        ('34b99a2b', 0),
-        ('39a8645d', 0),
-        ('42918530', 2),
-        ('4e45f183', 2),
-        ('506d28a5', 0),
-        ('5d2a5c43', 0),
-        ('60b61512', 0),
-        ('6430c8c4', 0),
-        ('662c240a', 0),
-        ('66f2d22f', 0),
-        ('6a11f6da', 0),
-        ('75b8110e', 0),
-        ('760b3cac', 0),
-        ('94f9d214', 0),
-        ('99b1bc43', 0),
-        ('bbb1b8b6', 0),
-        ('cf98881b', 0),
-        ('e133d23d', 0),
-        ('e345f17b', 0),
-        ('ea9794b1', 0),
-        ('e78887d1', 2)
-    ]
+def sample_fixed_size_2col_shapes_training(training_path, obj_dim):
+    if obj_dim == 3:
+        training_examples = [
+            ('1c0d0a4b', 2),
+            ('45737921', 2),
+            ('39a8645d', 0),
+            ('60b61512', 0),
+            ('662c240a', 0),
+            ('760b3cac', 0),
+            ('e133d23d', 0),
+            ('e78887d1', 2)
+        ]
+    elif obj_dim == 4:
+        training_examples = [
+            ('75b8110e', 0),
+            ('94f9d214', 0),
+            ('99b1bc43', 0),
+            ('bbb1b8b6', 0),
+            ('cf98881b', 0),
+            ('e345f17b', 0)
+        ]
+    elif obj_dim == 5:
+        training_examples = [
+            ('337b420f', 0),
+            ('42918530', 2),
+            ('4e45f183', 2),
+            ('6a11f6da', 0),
+            ('ea9794b1', 0)
+        ]
+
+    # TODO: the following are grid splitting tasks, should be moved to another kind of generator
+    #('3428a4f5', 0),
+    #('34b99a2b', 0),
+    #('506d28a5', 0),
+    #('5d2a5c43', 0),
+    #('6430c8c4', 0),
+    #('66f2d22f', 0),
 
     return return_training_objects(training_examples, training_path, 'fixed_size_2col_shapes')
 
@@ -1431,7 +1440,7 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
 
     return grid, object_mask
 
-def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None):
+def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj_dim=3):
     if min_dim is None:
         min_dim = 5
 
@@ -1467,10 +1476,8 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None):
     available_colors.remove(bg_color)
 
     # Rectangle object
-    max_obj_height = max(3, num_rows // 2)
-    max_obj_width = max(3, num_cols // 2)
-    obj_height = np.random.randint(3, max_obj_height + 1)
-    obj_width = np.random.randint(3, max_obj_width + 1)
+    obj_height = obj_dim
+    obj_width = obj_dim
 
     # Choose exactly 2 random colors between 0 and 9 (inclusive)
     two_colors = np.random.choice(range(10), 2, replace=False)
