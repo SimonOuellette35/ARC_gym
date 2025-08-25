@@ -2,6 +2,8 @@ from ARC_gym.utils.object_detector import ObjectDetector
 import random
 import numpy as np
 import json
+import scipy.ndimage
+
 
 
 def return_training_objects(training_examples, training_path, obj_category, crop_augment=True):
@@ -240,7 +242,6 @@ def sample_distinct_colors_adjacent_training(training_path, fill_mask):
         ('a3325580', 0),
         ('d56f2372', 0),
         ('dce56571', 0),
-        ('df978a02', 0),
         ('e21a174a', 0),
         ('e41c6fd3', 0)
     ]
@@ -254,7 +255,6 @@ def sample_distinct_colors_adjacent_empty_training(training_path, fill_mask):
     training_examples = [
         # simple empty shapes
         ('025d127b', 2),
-        ('15663ba9', 0),
         ('a3f84088', 0),
         ('a680ac02', 1),
         ('445eab21', 0),
@@ -288,6 +288,33 @@ def sample_distinct_colors_adjacent_empty_training(training_path, fill_mask):
     else:
         return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
 
+def sample_non_symmetrical_shapes_training(training_path):
+    training_examples = [
+        ('025d127b', 2),
+        ('05f2a901', 2),
+        ('11dc524f', 2),
+        ('18447a8d', 0),
+        ('184a9768', 1),
+        ('28bf18c6', 2),
+        ('37d3e8b2', 2),
+        ('423a55dc', 1),
+        ('4364c1c4', 2),
+        ('52364a65', 2),
+        ('63613498', 2),        
+        ('72ca375d', 0),
+        ('9bebae7a', 2),
+        ('a09f6c25', 2),
+        ('a3325580', 0),
+        ('d56f2372', 0),
+        ('dce56571', 0),
+        ('dc2e9a9d', 2),
+        ('18419cfa', 0),
+        ('1c56ad9f', 1),
+        ('d37a1ef5', 2)
+    ]
+
+    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
+
 def sample_incomplete_rectangles_training(training_path):
     training_examples = [
         ('60b61512', 0),
@@ -320,7 +347,6 @@ def sample_incomplete_pattern_training(training_path, pattern):
 
 def sample_corner_objects_training(training_path):
     training_examples = [
-        ('15663ba9', 0),
         ('18419cfa', 2),
         ('4b6b68e5', 2),
         ('b9630600', 1)
@@ -1512,6 +1538,118 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
             break
             
     return grid, object_mask
+
+def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    a = np.random.uniform()
+
+    if a < 0.4:
+        return sample_non_symmetrical_shapes_training(training_path)
+
+    # Helper function to check if a shape is asymmetric under 90/180/270 rotation
+    def is_asymmetric(shape_mask):
+        for k in [1, 2, 3]:
+            if np.array_equal(shape_mask, np.rot90(shape_mask, k=k)):
+                return False
+        return True
+
+    def is_8_connected(mask):
+        # 8-connectivity structure
+        structure = np.ones((3, 3), dtype=int)
+        labeled, num = scipy.ndimage.label(mask, structure=structure)
+        # Only one connected component and all 1s are in that component
+        return num == 1 and np.sum(mask) == np.sum(labeled == 1)
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    # Generate 1 to 7 objects
+    num_objects = np.random.randint(1, 8)
+
+    # Generate unique colors for objects (different from background)
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+
+    min_shape_dim = 3
+    max_shape_dim = 6
+
+    for obj_idx in range(num_objects):
+        obj_color = object_colors[obj_idx]
+        obj_id = obj_idx + 1  # Object IDs start from 1
+
+        found_spot = False
+        max_attempts = 50
+        for _ in range(max_attempts):
+            # Randomly choose shape size, ensuring it fits within grid dimensions
+            max_height = min(max_shape_dim, num_rows)
+            max_width = min(max_shape_dim, num_cols)
+            
+            # Ensure minimum dimensions don't exceed grid size
+            if min_shape_dim > max_height or min_shape_dim > max_width:
+                break  # Skip this object if it can't fit
+                
+            shape_height = np.random.randint(min_shape_dim, max_height + 1)
+            shape_width = np.random.randint(min_shape_dim, max_width + 1)
+
+            # Generate a random binary mask for the shape
+            for _ in range(30):  # Try up to 30 times to get an asymmetric, 8-connected shape
+                mask = (np.random.rand(shape_height, shape_width) > np.random.uniform(0.3, 0.7)).astype(np.uint8)
+
+                # Ensure at least 60% filled
+                if np.sum(mask) < int(0.6 * shape_height * shape_width):
+                    continue
+
+                # Ensure the mask is a single 8-connected component and not all 1s or all 0s
+                if np.sum(mask) == 0 or np.sum(mask) == mask.size:
+                    continue
+                if not is_8_connected(mask):
+                    continue
+
+                # Must be asymmetric under 90/180/270 rotation
+                if is_asymmetric(mask):
+                    break
+            else:
+                continue  # Could not generate asymmetric, 8-connected mask, try new position
+
+            # Try to find a free spot for this object
+            start_row = np.random.randint(0, num_rows - shape_height + 1)
+            start_col = np.random.randint(0, num_cols - shape_width + 1)
+            region = object_mask[start_row:start_row + shape_height, start_col:start_col + shape_width]
+            if np.any((mask == 1) & (region != 0)):
+                continue  # Overlaps, try another position
+
+            # Place the shape in the grid and object mask
+            grid_region = grid[start_row:start_row + shape_height, start_col:start_col + shape_width]
+            object_region = object_mask[start_row:start_row + shape_height, start_col:start_col + shape_width]
+            grid_region[mask == 1] = obj_color
+            object_region[mask == 1] = obj_id
+
+            found_spot = True
+            break  # Successfully placed this object
+
+        if not found_spot:
+            # No more space for this object, stop placing further objects
+            break
+
+    return grid, object_mask
+
 
 def sample_inner_color_borders(training_path, min_dim=None, max_dim=None):
     if min_dim is None:
