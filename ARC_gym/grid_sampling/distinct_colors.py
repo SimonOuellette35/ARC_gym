@@ -345,15 +345,6 @@ def sample_incomplete_pattern_training(training_path, pattern):
 
         return return_training_objects(training_examples, training_path, 'pattern_plus_filled')
 
-def sample_corner_objects_training(training_path):
-    training_examples = [
-        ('18419cfa', 2),
-        ('4b6b68e5', 2),
-        ('b9630600', 1)
-    ]
-
-    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
-
 def sample_uniform_rect_noisy_bg_training(training_path):
     training_examples = [
         ('25094a63', 0),
@@ -570,9 +561,6 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
 
     a = np.random.uniform()
 
-    if a < 0.1:
-        return sample_corner_objects_training(training_path)
-
     # Generate grid dimensions
     num_rows = np.random.randint(min_dim, max_dim + 1)
     num_cols = np.random.randint(min_dim, max_dim + 1)
@@ -757,6 +745,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
                             if object_mask[nr, nc] == 0:
                                 edge_mask[r, c] = True
                                 break
+
                 # Fill inside (non-edge) object pixels with bg_color and set mask to 0
                 inside_mask = (object_mask > 0) & (~edge_mask)
                 grid[inside_mask] = bg_color
