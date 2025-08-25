@@ -1476,7 +1476,7 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
     a = np.random.uniform()
 
     if a < 0.25:
-        return sample_fixed_size_2col_shapes_training(training_path)
+        return sample_fixed_size_2col_shapes_training(training_path, obj_dim)
 
     # Generate grid dimensions
     num_rows = np.random.randint(min_dim, max_dim + 1)
