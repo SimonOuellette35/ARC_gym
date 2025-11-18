@@ -1455,7 +1455,7 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
 
     return grid, object_mask
 
-def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj_dim=3):
+def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj_dim=3, obj_bg_param=None):
     if min_dim is None:
         min_dim = 5
 
@@ -1464,7 +1464,7 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
 
     a = np.random.uniform()
 
-    if a < 0.25:
+    if a < 0.25 and obj_bg_param is None:
         return sample_fixed_size_2col_shapes_training(training_path, obj_dim)
 
     # Generate grid dimensions
@@ -1494,8 +1494,15 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
     obj_height = obj_dim
     obj_width = obj_dim
 
-    # Choose exactly 2 random colors between 0 and 9 (inclusive)
-    two_colors = np.random.choice(range(10), 2, replace=False)
+    # Choose exactly 2 random colors between 0 and 9 (inclusive),
+    # but if obj_bg_param is not None, one of the two colors MUST be obj_bg_param
+    if obj_bg_param is not None:
+        # Pick a second color different from bg_color_param
+        color_choices = [c for c in range(10) if c != obj_bg_param]
+        second_color = np.random.choice(color_choices)
+        two_colors = np.array([obj_bg_param, second_color])
+    else:
+        two_colors = np.random.choice(range(10), 2, replace=False)
 
     for obj_idx in range(num_objects):
         obj_id = obj_idx + 1  # Object IDs start from 1
