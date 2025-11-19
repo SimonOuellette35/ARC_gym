@@ -105,6 +105,72 @@ class GridSampler:
             if not np.all(grid == grid[0,0]):
                 return grid
 
+    def sample_min_count_grids(self, min_dim, max_dim):
+        valid = False
+        while not valid:
+            input_grid = self.uniform_random_sample(min_dim=min_dim, max_dim=max_dim, monochrome_grid_ok = False)
+
+            # Count occurrences of each color in the input grid
+            color_counts = {}
+            for row in input_grid:
+                for color in row:
+                    color_counts[color] = color_counts.get(color, 0) + 1
+
+            # Exclude color 0 from being the minimum-count color
+            # Find the minimum count among colors that are NOT 0
+            nonzero_colors = [c for c in color_counts if c != 0]
+            if not nonzero_colors:
+                continue  # try again if all colors are 0
+
+            min_count = min(color_counts[c] for c in nonzero_colors)
+
+            # Check if minimum is unique and the color with min count is not 0
+            colors_with_min = [c for c in nonzero_colors if color_counts[c] == min_count]
+            valid = len(colors_with_min) == 1
+
+        return input_grid, None
+
+
+    def sample_max_count_grids(self, min_dim, max_dim):
+
+        valid = False
+        while not valid:
+            input_grid = self.uniform_random_sample(min_dim=min_dim, max_dim=max_dim, monochrome_grid_ok = False)
+            # Count occurrences of each color in the input grid
+            color_counts = {}
+            for row in input_grid:
+                for color in row:
+                    color_counts[color] = color_counts.get(color, 0) + 1
+            
+            # Find the maximum count
+            max_count = max(color_counts.values())
+            
+            # Check if maximum is unique by counting how many colors have this count
+            colors_with_max = sum(1 for count in color_counts.values() if count == max_count)
+            valid = colors_with_max == 1
+        
+        return input_grid, None
+
+    def sample_count_and_draw_grids(self, bg_color):
+        # Generate a random square grid with dimension between 3x3 and 6x6 and fill with background color
+        dim = np.random.randint(4, 7)
+        input_grid = np.full((dim, dim), bg_color)
+
+        # Pick a random foreground color between 0 and 9, excluding bg_color
+        possible_colors = [c for c in range(10) if c != bg_color]
+        fg_color = np.random.choice(possible_colors)
+
+        # Fill a random number of cells (at least 1, at most 5) with fg_color
+        num_fg = np.random.randint(1, 6)
+        
+        # Randomly choose num_fg unique positions in the grid to set to fg_color
+        positions = np.random.choice(9, num_fg, replace=False)
+        for pos in positions:
+            row, col = divmod(pos, 3)
+            input_grid[row, col] = fg_color
+
+        return input_grid, None
+
     def arc_to_numpy(self, fpath):
         with open(fpath) as f:
             content = json.load(f)
@@ -359,7 +425,7 @@ class GridSampler:
         return self.augment(grid_sample)
 
 
-    def sample_by_category(self, categories, min_dim=None, max_dim=None):
+    def sample_by_category(self, categories, min_dim=None, max_dim=None, bg_color=0):
 
         selected_cat = np.random.choice(categories)
 
@@ -424,6 +490,12 @@ class GridSampler:
             return DCA.sample_simple_filled_rectangles(self.training_path, min_dim, max_dim)
         elif selected_cat == 'non_symmetrical_shapes':
             return DCA.sample_non_symmetrical_shapes(self.training_path, min_dim, max_dim)
+        elif selected_cat == 'min_count':
+            return self.sample_min_count_grids(min_dim=3, max_dim=10)
+        elif selected_cat == 'max_count':
+            return self.sample_max_count_grids(min_dim=3, max_dim=10)
+        elif selected_cat == 'count_and_draw':
+            return self.sample_count_and_draw_grids(bg_color)
         
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()
