@@ -1,7 +1,7 @@
 import numpy as np
 import json
 import os
-import ARC_gym.grid_sampling.distinct_colors as DCA
+import ARC_gym.grid_sampling.object_grid_generation as OGG
 
 class GridSampler:
 
@@ -104,6 +104,48 @@ class GridSampler:
             # Check if the grid is uniform (all pixels are the same color)
             if not np.all(grid == grid[0,0]):
                 return grid
+
+    def sample_croppable_corners_grids(self, min_dim, max_dim):
+        while True:
+            if np.random.uniform() < 0.3:
+                # Generate random dimensions between min_dim and max_dim (inclusive)
+                rows = np.random.randint(min_dim, max_dim + 1)
+                cols = np.random.randint(min_dim, max_dim + 1)
+                grid = np.random.randint(0, 10, size=(rows, cols), dtype=np.int8)
+            else:
+                grid = self.training_set_crop(min_dim=min_dim, max_dim=max_dim)
+                cols = grid.shape[1]
+                rows = grid.shape[0]
+
+            # Get 2x2 corner subgrids
+            tl_2x2 = grid[0:2, 0:2]
+            tr_2x2 = grid[0:2, -2:] if cols >= 2 else grid[0:2, 0:2]
+            bl_2x2 = grid[-2:, 0:2] if rows >= 2 else grid[0:2, 0:2]
+            br_2x2 = grid[-2:, -2:] if rows >= 2 and cols >= 2 else grid[0:2, 0:2]
+
+            # Get 3x3 corner subgrids (handle edge cases for small grids)
+            tl_3x3 = grid[0:min(3, rows), 0:min(3, cols)]
+            tr_3x3 = grid[0:min(3, rows), max(0, cols-3):cols]
+            bl_3x3 = grid[max(0, rows-3):rows, 0:min(3, cols)]
+            br_3x3 = grid[max(0, rows-3):rows, max(0, cols-3):cols]
+
+            # flatten for easier comparison
+            corners_2x2 = [
+                tuple(tl_2x2.flatten()),
+                tuple(tr_2x2.flatten()),
+                tuple(bl_2x2.flatten()),
+                tuple(br_2x2.flatten())
+            ]
+            corners_3x3 = [
+                tuple(tl_3x3.flatten()),
+                tuple(tr_3x3.flatten()),
+                tuple(bl_3x3.flatten()),
+                tuple(br_3x3.flatten())
+            ]
+
+            # Check all 2x2 AND 3x3 corner subgrids are distinct
+            if len(set(corners_2x2)) == 4 and len(set(corners_3x3)) == 4:
+                return grid, None
 
     def sample_min_count_grids(self, min_dim, max_dim):
         valid = False
@@ -433,69 +475,71 @@ class GridSampler:
         # are separated by the fact that they are of a different color. Diagonally adjacent pixels belong
         # to the object if they are of the same color as that object.
         if selected_cat == 'distinct_colors_adjacent':
-            return DCA.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim)
+            return OGG.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim)
         elif selected_cat == 'distinct_colors_adjacent_empty':
-            return DCA.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim)
+            return OGG.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim)
         if selected_cat == 'distinct_colors_adjacent_fill':
-            return DCA.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim, fill_mask=True)
+            return OGG.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim, fill_mask=True)
         elif selected_cat == 'distinct_colors_adjacent_empty_fill':
-            return DCA.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim, fill_mask=True)
+            return OGG.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim, fill_mask=True)
         elif selected_cat == 'uniform_rect_noisy_bg':
-            return DCA.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=False)
+            return OGG.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=False)
         elif selected_cat == 'window_noisy_bg':
-            return DCA.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=True)
+            return OGG.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=True)
         elif selected_cat == 'incomplete_rectangles':
-            return DCA.sample_incomplete_rectangles(self.training_path, min_dim, max_dim)
+            return OGG.sample_incomplete_rectangles(self.training_path, min_dim, max_dim)
         elif selected_cat == 'incomplete_rectangles_same_shape':
-            return DCA.sample_incomplete_rectangles(self.training_path, min_dim, max_dim, all_same_shape=True)
+            return OGG.sample_incomplete_rectangles(self.training_path, min_dim, max_dim, all_same_shape=True)
         elif selected_cat == 'incomplete_pattern_dot_plus':
-            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_plus')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_plus')
         elif selected_cat == 'incomplete_pattern_dot_x':
-            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_x')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_x')
         elif selected_cat == 'incomplete_pattern_plus_hollow':
-            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_hollow')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_hollow')
         elif selected_cat == 'incomplete_pattern_x_hollow':
-            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_hollow')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_hollow')
         elif selected_cat == 'incomplete_pattern_plus_filled':
-            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_filled')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_filled')
         elif selected_cat == 'incomplete_pattern_x_filled':
-            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_filled')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_filled')
         elif selected_cat == 'incomplete_pattern_square_hollow':
-            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_hollow')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_hollow')
         elif selected_cat == 'incomplete_pattern_square_filled':
-            return DCA.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_filled')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_filled')
         elif selected_cat == 'corner_objects':
-            return DCA.sample_corner_objects(self.training_path, min_dim, max_dim)
+            return OGG.sample_corner_objects(self.training_path, min_dim, max_dim)
         elif selected_cat == 'fixed_size_2col_shapes3x3':
-            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3)
         elif selected_cat == 'fixed_size_2col_shapes4x4':
-            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4)
         elif selected_cat == 'fixed_size_2col_shapes5x5':
-            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5)
         elif selected_cat == 'fixed_size_2col_shapes3x3_bb':
-            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3, obj_bg_param=0)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3, obj_bg_param=0)
         elif selected_cat == 'fixed_size_2col_shapes4x4_bb':
-            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4, obj_bg_param=0)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4, obj_bg_param=0)
         elif selected_cat == 'fixed_size_2col_shapes5x5_bb':
-            return DCA.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5, obj_bg_param=0)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5, obj_bg_param=0)
         elif selected_cat == 'four_corners':
-            return DCA.sample_four_corners(self.training_path, min_dim, max_dim)
+            return OGG.sample_four_corners(self.training_path, min_dim, max_dim)
         elif selected_cat == 'inner_color_borders':
-            return DCA.sample_inner_color_borders(self.training_path, 6, 8)
+            return OGG.sample_inner_color_borders(self.training_path, 6, 8)
         elif selected_cat == 'single_object':
-            return DCA.sample_single_object(self.training_path)
+            return OGG.sample_single_object(self.training_path)
         elif selected_cat == 'single_object_noisy_bg':
-            return DCA.sample_uniform_rect_noisy_bg(self.training_path, num_objects=1)
+            return OGG.sample_uniform_rect_noisy_bg(self.training_path, num_objects=1)
         elif selected_cat == 'simple_filled_rectangles':
-            return DCA.sample_simple_filled_rectangles(self.training_path, min_dim, max_dim)
+            return OGG.sample_simple_filled_rectangles(self.training_path, min_dim, max_dim)
         elif selected_cat == 'non_symmetrical_shapes':
-            return DCA.sample_non_symmetrical_shapes(self.training_path, min_dim, max_dim)
+            return OGG.sample_non_symmetrical_shapes(self.training_path, min_dim, max_dim)
         elif selected_cat == 'min_count':
             return self.sample_min_count_grids(min_dim=3, max_dim=10)
         elif selected_cat == 'max_count':
             return self.sample_max_count_grids(min_dim=3, max_dim=10)
         elif selected_cat == 'count_and_draw':
             return self.sample_count_and_draw_grids(bg_color)
+        elif selected_cat == 'croppable_corners':
+            return self.sample_croppable_corners_grids(min_dim, max_dim)
         
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()
