@@ -137,6 +137,63 @@ class GridSampler:
 
             return grid, inside_grid
 
+    def sample_shearable_grids(self, min_dim, max_dim):
+        valid = False
+        while not valid:
+            width = np.random.randint(min_dim, max_dim + 1)
+            height = np.random.randint(min_dim, max_dim + 1)
+            bg_color = 0
+            input_grid = [[bg_color for _ in range(width)] for _ in range(height)]
+
+            # Select type of generation
+            gen_type = np.random.choice(['full', 'randomized', 'hollow'])
+            
+            # Select a section that's at least 5 pixels high
+            min_height = 5
+            max_height = height
+            section_height = np.random.randint(min_height, max_height + 1)
+            start_y = np.random.randint(0, height - section_height + 1)
+            
+            # Select width of section
+            min_width = 3
+            max_width = width
+            section_width = np.random.randint(min_width, max_width + 1)
+            start_x = np.random.randint(0, width - section_width + 1)
+            
+            # Select color (not background)
+            color = np.random.choice([c for c in range(10) if c != bg_color])
+            
+            if gen_type == 'full':
+                # Fill entire section with same color
+                for y in range(start_y, start_y + section_height):
+                    for x in range(start_x, start_x + section_width):
+                        input_grid[y][x] = color
+                        
+            elif gen_type == 'randomized':
+                # Fill section with random colors
+                for y in range(start_y, start_y + section_height):
+                    for x in range(start_x, start_x + section_width):
+                        input_grid[y][x] = np.random.choice([c for c in range(10) if c != bg_color])
+                        
+            else:  # hollow
+                # Create outline only
+                for y in range(start_y, start_y + section_height):
+                    for x in range(start_x, start_x + section_width):
+                        if (y == start_y or y == start_y + section_height - 1 or 
+                            x == start_x or x == start_x + section_width - 1):
+                            input_grid[y][x] = color
+                        else:
+                            input_grid[y][x] = bg_color
+
+            # Check if input grid has at least 10 non-zero pixels
+            cells_int = np.array([list(row) for row in input_grid]).astype(int)
+            if np.sum(cells_int > 0) < 10:
+                continue
+
+            valid = True
+
+        return input_grid, None
+
 
     def sample_croppable_corners_grids(self, min_dim, max_dim):
         while True:
@@ -575,7 +632,9 @@ class GridSampler:
             return self.sample_croppable_corners_grids(min_dim, max_dim)
         elif selected_cat == 'inside_croppable':
             return self.sample_inside_croppable_grids(min_dim, max_dim)
-        
+        elif selected_cat == 'shearable_grids':
+            return self.sample_shearable_grids(min_dim=6, max_dim=20)
+
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()
 
