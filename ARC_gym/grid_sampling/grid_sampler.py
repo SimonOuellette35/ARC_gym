@@ -105,9 +105,42 @@ class GridSampler:
             if not np.all(grid == grid[0,0]):
                 return grid
 
+    def sample_inside_croppable_grids(self, min_dim, max_dim):
+        while True:
+            if np.random.uniform() < 0.2:
+                # Generate random dimensions between min_dim and max_dim (inclusive)
+                rows = np.random.randint(min_dim, max_dim + 1)
+                cols = np.random.randint(min_dim, max_dim + 1)
+                grid = np.random.randint(0, 10, size=(rows, cols), dtype=np.int8)
+            else:
+                grid = self.training_set_crop(min_dim=min_dim, max_dim=max_dim)
+                cols = grid.shape[1]
+                rows = grid.shape[0]
+
+            # Determine the crop margin based on the minimum grid dimension
+            min_margin = min(rows, cols) // 2  # max possible margin
+            if min_margin >= 3:
+                margin = 3
+            elif min_margin >= 2:
+                margin = 2
+            else:
+                margin = 1
+
+            # Only crop if the resulting grid still has positive dimension
+            if rows > 2 * margin and cols > 2 * margin:
+                inside_grid = grid[margin:rows - margin, margin:cols - margin]
+            else:
+                inside_grid = grid
+
+            if np.all(inside_grid == 0):
+                continue
+
+            return grid, inside_grid
+
+
     def sample_croppable_corners_grids(self, min_dim, max_dim):
         while True:
-            if np.random.uniform() < 0.3:
+            if np.random.uniform() < 0.2:
                 # Generate random dimensions between min_dim and max_dim (inclusive)
                 rows = np.random.randint(min_dim, max_dim + 1)
                 cols = np.random.randint(min_dim, max_dim + 1)
@@ -540,6 +573,8 @@ class GridSampler:
             return self.sample_count_and_draw_grids(bg_color)
         elif selected_cat == 'croppable_corners':
             return self.sample_croppable_corners_grids(min_dim, max_dim)
+        elif selected_cat == 'inside_croppable':
+            return self.sample_inside_croppable_grids(min_dim, max_dim)
         
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
         rnd = np.random.uniform()
