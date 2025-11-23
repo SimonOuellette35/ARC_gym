@@ -135,7 +135,7 @@ class GridSampler:
             if np.all(inside_grid == 0):
                 continue
 
-            return grid, inside_grid
+            return grid, None
 
     def sample_shearable_grids(self, min_dim, max_dim):
         valid = False
