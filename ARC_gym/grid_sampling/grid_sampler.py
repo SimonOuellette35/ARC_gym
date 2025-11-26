@@ -26,7 +26,7 @@ class GridSampler:
         self.training_grids = []
         self.load_training_grids()
 
-    def uniform_random_sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
+    def uniform_random_sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True, colors_present=None):
         '''
         Parameters:
             @param force_square: True to force the generated to be square. Can be useful for some types of tasks where
@@ -36,7 +36,7 @@ class GridSampler:
             @param bg_color: If bg_color is set, will use that color for the grid background. Otherwise, will randomize
                              with higher probability of zero than the other colors (see self.black_bg_prob parameter.)
         '''
-        while True:  # Keep trying until we get a non-uniform grid
+        while True:  # Keep trying until we get a non-uniform grid that (if requested) contains colors_present
             if min_dim is None:
                 min_dim = self.min_dim
 
@@ -63,6 +63,22 @@ class GridSampler:
 
             available_colors = [c for c in range(10) if c != bg_color]
 
+            # If colors_present is set, ensure we use its colors (if possible) in the grid
+            if colors_present is not None:
+                required_fg_colors = [c for c in colors_present if c != bg_color]
+                # Remove duplicates and make sure they exist in available colors
+                required_fg_colors = [c for c in set(required_fg_colors) if c in available_colors]
+                if len(required_fg_colors) == 0:
+                    # fallback: just randomize
+                    colors_to_use = available_colors
+                else:
+                    colors_to_use = required_fg_colors.copy()
+                    # Maybe supplement with additional random colors if needed
+                    rest = [c for c in available_colors if c not in colors_to_use]
+                    # Use up to 4 unique colors if grid_type < 0.75 case below
+            else:
+                colors_to_use = available_colors
+
             # Randomly choose how many foreground pixels we're going to generate
             density = np.random.uniform(0.05, 0.3)  # Random density between 5% and 30%        
             num_fg_px = int(num_rows * num_cols * density)
@@ -74,38 +90,77 @@ class GridSampler:
 
             if grid_type < 0.2 and monochrome_grid_ok:
                 # monochrome grid
-                # Choose a random color different from the background color    
-                color = np.random.choice(available_colors)
+                if colors_present is not None and len(required_fg_colors) > 0:
+                    # Pick a required color
+                    color = np.random.choice(required_fg_colors)
+                else:
+                    color = np.random.choice(available_colors)
                 
-                # Set the selected positions to the chosen color
                 for i in range(num_fg_px):
                     grid[nonzero_positions[0][i], nonzero_positions[1][i]] = color
-                    
-            elif grid_type < 0.75:
-                # Choose 2 to 4 colors different from the background color
-                num_colors = np.random.randint(2, 5)  # Random number between 2 and 4 inclusive
-                colors = np.random.choice(available_colors, size=num_colors, replace=False)
-                
-                # Assign random colors from the selected colors to each non-zero position
-                for i in range(num_fg_px):
-                    # Randomly select a color from the chosen colors
-                    random_color = np.random.choice(colors)
-                    # Set the selected position to the chosen color
-                    grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
 
+            elif grid_type < 0.75:
+                # Choose between 2 to 4 foreground colors, but ensure all required_fg_colors are included
+                min_needed = max(2, len(colors_to_use))
+                num_colors = np.random.randint(min_needed, max(5, min_needed+1))
+                # Select the colors to use
+                if colors_present is not None and len(required_fg_colors) > 0:
+                    # Always include all required_fg_colors
+                    pool = [c for c in available_colors if c not in required_fg_colors]
+                    n_extra = max(num_colors - len(required_fg_colors), 0)
+                    extra = []
+                    if len(pool) > 0 and n_extra > 0:
+                        extra = np.random.choice(pool, size=min(n_extra, len(pool)), replace=False)
+                        if not isinstance(extra, (list, np.ndarray)):
+                            extra = [extra]
+                    # guaranteed all required_fg_colors are used
+                    colors = np.array(list(required_fg_colors) + list(extra))
+                else:
+                    colors = np.random.choice(available_colors, size=num_colors, replace=False)
+
+                # Assign colors randomly to foreground pixels, but guarantee all required_fg_colors appear
+                if colors_present is not None and len(required_fg_colors) > 0 and num_fg_px >= len(required_fg_colors):
+                    indices = list(range(num_fg_px))
+                    np.random.shuffle(indices)
+                    # Assign one required_fg_color to the first len(required_fg_colors) pixels
+                    for idx, color in zip(indices[:len(required_fg_colors)], required_fg_colors):
+                        grid[nonzero_positions[0][idx], nonzero_positions[1][idx]] = color
+                    # The remainder, assign randomly
+                    for i in indices[len(required_fg_colors):]:
+                        grid[nonzero_positions[0][i], nonzero_positions[1][i]] = np.random.choice(colors)
+                else:
+                    # Just assign randomly
+                    for i in range(num_fg_px):
+                        random_color = np.random.choice(colors)
+                        grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
             else:
-                # Assign random colors from the selected colors to each non-zero position
-                for i in range(num_fg_px):
-                    # Randomly select a color from the chosen colors
-                    random_color = np.random.choice(available_colors)
-                    # Set the selected position to the chosen color
-                    grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
+                # Assign random colors from available_colors to each non-zero position,
+                # but ensure all required_fg_colors are assigned to at least one pixel if possible
+                if colors_present is not None and len(required_fg_colors) > 0 and num_fg_px >= len(required_fg_colors):
+                    indices = list(range(num_fg_px))
+                    np.random.shuffle(indices)
+                    # Guarantee all required_fg_colors
+                    for idx, color in zip(indices[:len(required_fg_colors)], required_fg_colors):
+                        grid[nonzero_positions[0][idx], nonzero_positions[1][idx]] = color
+                    for i in indices[len(required_fg_colors):]:
+                        random_color = np.random.choice(available_colors)
+                        grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
+                else:
+                    # Just assign randomly
+                    for i in range(num_fg_px):
+                        random_color = np.random.choice(available_colors)
+                        grid[nonzero_positions[0][i], nonzero_positions[1][i]] = random_color
 
             # Check if the grid is uniform (all pixels are the same color)
             if not np.all(grid == grid[0,0]):
+                if colors_present is not None:
+                    present_colors = set(np.unique(grid))
+                    # Ensure colors_present are in the grid
+                    if not all(color in present_colors for color in colors_present):
+                        continue
                 return grid
 
-    def sample_inside_croppable_grids(self, min_dim, max_dim):
+    def sample_inside_croppable_grids(self, min_dim, max_dim, colors_present=None):
         while True:
             if np.random.uniform() < 0.2:
                 # Generate random dimensions between min_dim and max_dim (inclusive)
@@ -135,9 +190,15 @@ class GridSampler:
             if np.all(inside_grid == 0):
                 continue
 
+            # Check colors_present constraint
+            if colors_present is not None:
+                grid_colors = set(np.unique(grid))
+                if not all(color in grid_colors for color in colors_present):
+                    continue
+
             return grid, None
 
-    def sample_shearable_grids(self, min_dim, max_dim):
+    def sample_shearable_grids(self, min_dim, max_dim, colors_present=None):
         valid = False
         while not valid:
             width = np.random.randint(min_dim, max_dim + 1)
@@ -161,7 +222,14 @@ class GridSampler:
             start_x = np.random.randint(0, width - section_width + 1)
             
             # Select color (not background)
-            color = np.random.choice([c for c in range(10) if c != bg_color])
+            available_colors = [c for c in range(10) if c != bg_color]
+            if colors_present is not None:
+                # Filter to use colors from colors_present if specified
+                available_from_present = [c for c in colors_present if c != bg_color]
+                if available_from_present:
+                    available_colors = available_from_present
+            
+            color = np.random.choice(available_colors)
             
             if gen_type == 'full':
                 # Fill entire section with same color
@@ -173,7 +241,7 @@ class GridSampler:
                 # Fill section with random colors
                 for y in range(start_y, start_y + section_height):
                     for x in range(start_x, start_x + section_width):
-                        input_grid[y][x] = np.random.choice([c for c in range(10) if c != bg_color])
+                        input_grid[y][x] = np.random.choice(available_colors)
                         
             else:  # hollow
                 # Create outline only
@@ -190,12 +258,26 @@ class GridSampler:
             if np.sum(cells_int > 0) < 10:
                 continue
 
+            # Check colors_present constraint
+            if colors_present is not None:
+                grid_colors = set(np.unique(cells_int))
+                if not all(color in grid_colors for color in colors_present):
+                    # Try to add missing colors by replacing some existing pixels
+                    missing_colors = [c for c in colors_present if c not in grid_colors]
+                    for missing_color in missing_colors:
+                        # Find a non-background pixel to replace
+                        non_bg_positions = [(y, x) for y in range(height) for x in range(width) 
+                                          if input_grid[y][x] != bg_color]
+                        if non_bg_positions:
+                            y, x = non_bg_positions[np.random.randint(len(non_bg_positions))]
+                            input_grid[y][x] = missing_color
+
             valid = True
 
         return input_grid, None
 
 
-    def sample_croppable_corners_grids(self, min_dim, max_dim):
+    def sample_croppable_corners_grids(self, min_dim, max_dim, colors_present=None):
         while True:
             if np.random.uniform() < 0.2:
                 # Generate random dimensions between min_dim and max_dim (inclusive)
@@ -234,10 +316,18 @@ class GridSampler:
             ]
 
             # Check all 2x2 AND 3x3 corner subgrids are distinct
-            if len(set(corners_2x2)) == 4 and len(set(corners_3x3)) == 4:
+            corners_valid = len(set(corners_2x2)) == 4 and len(set(corners_3x3)) == 4
+            
+            # Check colors_present constraint
+            colors_valid = True
+            if colors_present is not None:
+                grid_colors = set(np.unique(grid))
+                colors_valid = all(color in grid_colors for color in colors_present)
+            
+            if corners_valid and colors_valid:
                 return grid, None
 
-    def sample_min_count_grids(self, min_dim, max_dim):
+    def sample_min_count_grids(self, min_dim, max_dim, colors_present=None):
         valid = False
         while not valid:
             input_grid = self.uniform_random_sample(min_dim=min_dim, max_dim=max_dim, monochrome_grid_ok = False)
@@ -259,11 +349,16 @@ class GridSampler:
             # Check if minimum is unique and the color with min count is not 0
             colors_with_min = [c for c in nonzero_colors if color_counts[c] == min_count]
             valid = len(colors_with_min) == 1
+            
+            # Check colors_present constraint
+            if colors_present is not None and valid:
+                grid_colors = set(color_counts.keys())
+                valid = all(color in grid_colors for color in colors_present)
 
         return input_grid, None
 
 
-    def sample_max_count_grids(self, min_dim, max_dim):
+    def sample_max_count_grids(self, min_dim, max_dim, colors_present=None):
 
         valid = False
         while not valid:
@@ -280,17 +375,32 @@ class GridSampler:
             # Check if maximum is unique by counting how many colors have this count
             colors_with_max = sum(1 for count in color_counts.values() if count == max_count)
             valid = colors_with_max == 1
+            
+            # Check colors_present constraint
+            if colors_present is not None and valid:
+                grid_colors = set(color_counts.keys())
+                valid = all(color in grid_colors for color in colors_present)
         
         return input_grid, None
 
-    def sample_count_and_draw_grids(self, bg_color):
+    def sample_count_and_draw_grids(self, bg_color, colors_present=None):
         # Generate a random square grid with dimension between 3x3 and 6x6 and fill with background color
         dim = np.random.randint(4, 7)
         input_grid = np.full((dim, dim), bg_color)
 
         # Pick a random foreground color between 0 and 9, excluding bg_color
         possible_colors = [c for c in range(10) if c != bg_color]
-        fg_color = np.random.choice(possible_colors)
+        
+        # If colors_present is specified, ensure we use colors from that list
+        if colors_present is not None:
+            # Filter possible colors to only include those in colors_present (excluding bg_color)
+            available_fg_colors = [c for c in colors_present if c != bg_color]
+            if available_fg_colors:
+                fg_color = np.random.choice(available_fg_colors)
+            else:
+                fg_color = np.random.choice(possible_colors)
+        else:
+            fg_color = np.random.choice(possible_colors)
 
         # Fill a random number of cells (at least 1, at most 5) with fg_color
         num_fg = np.random.randint(1, 6)
@@ -300,6 +410,25 @@ class GridSampler:
         for pos in positions:
             row, col = divmod(pos, 3)
             input_grid[row, col] = fg_color
+
+        # If colors_present is specified, ensure all required colors are present
+        if colors_present is not None:
+            grid_colors = set(np.unique(input_grid))
+            missing_colors = [c for c in colors_present if c not in grid_colors]
+            
+            # Add missing colors by replacing some existing pixels
+            for missing_color in missing_colors:
+                # Find positions that are not bg_color and replace one with missing_color
+                non_bg_positions = np.where(input_grid != bg_color)
+                if len(non_bg_positions[0]) > 0:
+                    idx = np.random.randint(len(non_bg_positions[0]))
+                    input_grid[non_bg_positions[0][idx], non_bg_positions[1][idx]] = missing_color
+                else:
+                    # If no non-bg positions, replace a bg position
+                    bg_positions = np.where(input_grid == bg_color)
+                    if len(bg_positions[0]) > 0:
+                        idx = np.random.randint(len(bg_positions[0]))
+                        input_grid[bg_positions[0][idx], bg_positions[1][idx]] = missing_color
 
         return input_grid, None
 
@@ -557,7 +686,7 @@ class GridSampler:
         return self.augment(grid_sample)
 
 
-    def sample_by_category(self, categories, min_dim=None, max_dim=None, bg_color=0):
+    def sample_by_category(self, categories, min_dim=None, max_dim=None, bg_color=0, colors_present=None):
 
         selected_cat = np.random.choice(categories)
 
@@ -565,80 +694,89 @@ class GridSampler:
         # are separated by the fact that they are of a different color. Diagonally adjacent pixels belong
         # to the object if they are of the same color as that object.
         if selected_cat == 'distinct_colors_adjacent':
-            return OGG.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim)
+            return OGG.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'distinct_colors_adjacent_empty':
-            return OGG.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim)
+            return OGG.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim, colors_present=colors_present)
         if selected_cat == 'distinct_colors_adjacent_fill':
-            return OGG.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim, fill_mask=True)
+            return OGG.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim, fill_mask=True, colors_present=colors_present)
         elif selected_cat == 'distinct_colors_adjacent_empty_fill':
-            return OGG.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim, fill_mask=True)
+            return OGG.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim, fill_mask=True, colors_present=colors_present)
         elif selected_cat == 'uniform_rect_noisy_bg':
-            return OGG.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=False)
+            return OGG.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=False, colors_present=colors_present)
         elif selected_cat == 'window_noisy_bg':
-            return OGG.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=True)
+            return OGG.sample_uniform_rect_noisy_bg(self.training_path, min_dim, max_dim, empty=True, colors_present=colors_present)
         elif selected_cat == 'incomplete_rectangles':
-            return OGG.sample_incomplete_rectangles(self.training_path, min_dim, max_dim)
+            return OGG.sample_incomplete_rectangles(self.training_path, min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'incomplete_rectangles_same_shape':
-            return OGG.sample_incomplete_rectangles(self.training_path, min_dim, max_dim, all_same_shape=True)
+            return OGG.sample_incomplete_rectangles(self.training_path, min_dim, max_dim, all_same_shape=True, colors_present=colors_present)
         elif selected_cat == 'incomplete_pattern_dot_plus':
-            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_plus')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_plus', colors_present=colors_present)
         elif selected_cat == 'incomplete_pattern_dot_x':
-            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_x')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='dot_x', colors_present=colors_present)
         elif selected_cat == 'incomplete_pattern_plus_hollow':
-            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_hollow')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_hollow', colors_present=colors_present)
         elif selected_cat == 'incomplete_pattern_x_hollow':
-            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_hollow')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_hollow', colors_present=colors_present)
         elif selected_cat == 'incomplete_pattern_plus_filled':
-            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_filled')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='plus_filled', colors_present=colors_present)
         elif selected_cat == 'incomplete_pattern_x_filled':
-            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_filled')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='x_filled', colors_present=colors_present)
         elif selected_cat == 'incomplete_pattern_square_hollow':
-            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_hollow')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_hollow', colors_present=colors_present)
         elif selected_cat == 'incomplete_pattern_square_filled':
-            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_filled')
+            return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_filled', colors_present=colors_present)
         elif selected_cat == 'corner_objects':
-            return OGG.sample_corner_objects(self.training_path, min_dim, max_dim)
+            return OGG.sample_corner_objects(self.training_path, min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'fixed_size_2col_shapes3x3':
-            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3, colors_present=colors_present)
         elif selected_cat == 'fixed_size_2col_shapes4x4':
-            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4, colors_present=colors_present)
         elif selected_cat == 'fixed_size_2col_shapes5x5':
-            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5, colors_present=colors_present)
         elif selected_cat == 'fixed_size_2col_shapes3x3_bb':
-            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3, obj_bg_param=0)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3, obj_bg_param=0, colors_present=colors_present)
         elif selected_cat == 'fixed_size_2col_shapes4x4_bb':
-            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4, obj_bg_param=0)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=4, obj_bg_param=0, colors_present=colors_present)
         elif selected_cat == 'fixed_size_2col_shapes5x5_bb':
-            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5, obj_bg_param=0)
+            return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=5, obj_bg_param=0, colors_present=colors_present)
         elif selected_cat == 'four_corners':
-            return OGG.sample_four_corners(self.training_path, min_dim, max_dim)
+            return OGG.sample_four_corners(self.training_path, min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'inner_color_borders':
-            return OGG.sample_inner_color_borders(self.training_path, 6, 8)
+            return OGG.sample_inner_color_borders(self.training_path, 6, 8, colors_present=colors_present)
         elif selected_cat == 'single_object':
-            return OGG.sample_single_object(self.training_path)
+            return OGG.sample_single_object(self.training_path, colors_present=colors_present)
         elif selected_cat == 'single_object_noisy_bg':
-            return OGG.sample_uniform_rect_noisy_bg(self.training_path, num_objects=1)
+            return OGG.sample_uniform_rect_noisy_bg(self.training_path, num_objects=1, colors_present=colors_present)
         elif selected_cat == 'simple_filled_rectangles':
-            return OGG.sample_simple_filled_rectangles(self.training_path, min_dim, max_dim)
+            return OGG.sample_simple_filled_rectangles(self.training_path, min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'non_symmetrical_shapes':
-            return OGG.sample_non_symmetrical_shapes(self.training_path, min_dim, max_dim)
+            return OGG.sample_non_symmetrical_shapes(self.training_path, min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'min_count':
-            return self.sample_min_count_grids(min_dim=3, max_dim=10)
+            return self.sample_min_count_grids(min_dim=3, max_dim=10, colors_present=colors_present)
         elif selected_cat == 'max_count':
-            return self.sample_max_count_grids(min_dim=3, max_dim=10)
+            return self.sample_max_count_grids(min_dim=3, max_dim=10, colors_present=colors_present)
         elif selected_cat == 'count_and_draw':
-            return self.sample_count_and_draw_grids(bg_color)
+            return self.sample_count_and_draw_grids(bg_color, colors_present=colors_present)
         elif selected_cat == 'croppable_corners':
-            return self.sample_croppable_corners_grids(min_dim, max_dim)
+            return self.sample_croppable_corners_grids(min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'inside_croppable':
-            return self.sample_inside_croppable_grids(min_dim, max_dim)
+            return self.sample_inside_croppable_grids(min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'shearable_grids':
-            return self.sample_shearable_grids(min_dim=6, max_dim=20)
+            return self.sample_shearable_grids(min_dim=6, max_dim=20, colors_present=colors_present)
 
-    def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True):
+    def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True, colors_present=None):
         rnd = np.random.uniform()
 
         if rnd < self.grid_type_ratio:
-            return self.uniform_random_sample(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
+            return self.uniform_random_sample(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok, colors_present)
         else:
-            return self.training_set_crop(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
+            if colors_present is not None:
+                for _ in range(100):
+                    grid = self.training_set_crop(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
+                    grid_colors = set(np.unique(grid))
+                    if all(color in grid_colors for color in colors_present):
+                        return grid
+                # If after 100 tries not all required colors were found, just return the last grid anyway
+                return grid
+            else:
+                return self.training_set_crop(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)

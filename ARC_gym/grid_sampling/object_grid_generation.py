@@ -5,6 +5,46 @@ import json
 import scipy.ndimage
 
 
+def ensure_colors_present(available_colors, num_objects, colors_present, bg_color):
+    """
+    Helper function to ensure required colors are present in the generated objects.
+    
+    Args:
+        available_colors: List of available colors (excluding bg_color)
+        num_objects: Current number of objects
+        colors_present: List of required colors or None
+        bg_color: Background color
+        
+    Returns:
+        tuple: (object_colors, updated_num_objects)
+    """
+    if colors_present is not None:
+        # Ensure bg_color is present (it's already the background)
+        required_fg_colors = [c for c in colors_present if c != bg_color]
+        
+        # Make sure we have enough objects to accommodate required colors
+        if len(required_fg_colors) > num_objects:
+            num_objects = len(required_fg_colors)
+        
+        # Start with required colors, then add random ones if needed
+        object_colors = required_fg_colors.copy()
+        remaining_colors = [c for c in available_colors if c not in required_fg_colors]
+        
+        # Add more colors if we need more objects
+        if len(object_colors) < num_objects and remaining_colors:
+            additional_needed = num_objects - len(object_colors)
+            additional_colors = np.random.choice(remaining_colors, 
+                                               min(additional_needed, len(remaining_colors)), 
+                                               replace=False)
+            object_colors.extend(additional_colors)
+        
+        object_colors = np.array(object_colors)
+    else:
+        object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    return object_colors, num_objects
+
+
 
 def return_training_objects(training_examples, training_path, obj_category, crop_augment=True):
     
@@ -424,7 +464,7 @@ def sample_fixed_size_2col_shapes_training(training_path, obj_dim):
     return return_training_objects(training_examples, training_path, 'fixed_size_2col_shapes')
 
 
-def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, fill_mask=False):
+def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, fill_mask=False, colors_present=None):
     if min_dim is None:
         min_dim = 3
 
@@ -454,12 +494,13 @@ def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, f
 
     # Generate 1 to 9 objects
     num_objects = np.random.randint(1, 10)
-    object_colors = []
     
     # Generate unique colors for objects (different from background)
     available_colors = list(range(10))
     available_colors.remove(bg_color)
-    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    # Ensure required colors are present if specified
+    object_colors, num_objects = ensure_colors_present(available_colors, num_objects, colors_present, bg_color)
 
     for obj_idx in range(num_objects):
         obj_color = object_colors[obj_idx]
@@ -552,7 +593,7 @@ def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, f
 
     return grid, object_mask
 
-def sample_corner_objects(training_path, min_dim=None, max_dim=None):
+def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
         min_dim = 16
 
@@ -753,7 +794,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None):
     return grid, object_mask
 
 
-def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=None, fill_mask = False):
+def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=None, fill_mask=False, colors_present=None):
     if min_dim is None:
         min_dim = 3
 
@@ -783,12 +824,13 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
 
     # Generate 1 to 7 objects
     num_objects = np.random.randint(1, 8)
-    object_colors = []
     
     # Generate unique colors for objects (different from background)
     available_colors = list(range(10))
     available_colors.remove(bg_color)
-    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    # Ensure required colors are present if specified
+    object_colors, num_objects = ensure_colors_present(available_colors, num_objects, colors_present, bg_color)
 
     for obj_idx in range(num_objects):
         obj_color = object_colors[obj_idx]
@@ -847,7 +889,7 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
             
     return grid, object_mask
 
-def sample_single_object(training_path, min_dim=None, max_dim=None):
+def sample_single_object(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
         min_dim = 3
 
@@ -876,12 +918,13 @@ def sample_single_object(training_path, min_dim=None, max_dim=None):
     object_mask = np.zeros((num_rows, num_cols), dtype=int)
 
     num_objects = 1
-    object_colors = []
     
     # Generate unique colors for objects (different from background)
     available_colors = list(range(10))
     available_colors.remove(bg_color)
-    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    # Ensure required colors are present if specified
+    object_colors, num_objects = ensure_colors_present(available_colors, num_objects, colors_present, bg_color)
 
     for obj_idx in range(num_objects):
         obj_color = object_colors[obj_idx]
@@ -993,7 +1036,7 @@ def sample_single_object(training_path, min_dim=None, max_dim=None):
 
     return grid, object_mask
 
-def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None):
+def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
         min_dim = 6
 
@@ -1022,7 +1065,9 @@ def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None):
     # Generate unique colors for objects (different from background)
     available_colors = list(range(10))
     available_colors.remove(bg_color)
-    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    # Ensure required colors are present if specified
+    object_colors, num_objects = ensure_colors_present(available_colors, num_objects, colors_present, bg_color)
 
     max_attempts_per_object = 50  # Prevent infinite loops if grid is crowded
 
@@ -1062,7 +1107,7 @@ def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None):
     return grid, object_mask
 
 
-def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empty=False, num_objects=None):
+def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empty=False, num_objects=None, colors_present=None):
     if min_dim is None:
         min_dim = 6
 
@@ -1101,13 +1146,13 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
     # Generate 1 to 6 objects
     if num_objects is None:
         num_objects = np.random.randint(1, 7)
-
-    object_colors = []
     
     # Generate unique colors for objects (different from background)
     available_colors = list(range(10))
     available_colors.remove(bg_color)
-    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    # Ensure required colors are present if specified
+    object_colors, num_objects = ensure_colors_present(available_colors, num_objects, colors_present, bg_color)
 
     max_attempts_per_object = 50  # Prevent infinite loops if grid is crowded
 
@@ -1324,7 +1369,7 @@ def get_pattern(bg_color, pattern, num_patterns):
 
     return output_patterns, output_masks
 
-def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern='dot_plus'):
+def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern='dot_plus', colors_present=None):
     training_patterns = ['dot_plus', 'plus_filled', 'square_hollow']
 
     if min_dim is None:
@@ -1356,12 +1401,13 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
     
     # Generate 1 to 7 objects
     num_objects = np.random.randint(1, 8)
-    object_colors = []
     
     # Generate unique colors for objects (different from background)
     available_colors = list(range(10))
     available_colors.remove(bg_color)
-    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    # Ensure required colors are present if specified
+    object_colors, num_objects = ensure_colors_present(available_colors, num_objects, colors_present, bg_color)
 
     # IMPORTANT: Pass the actual grid background color to get_pattern
     # Randomly choose number of patterns to paste (1 to 6)
@@ -1455,7 +1501,7 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
 
     return grid, object_mask
 
-def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj_dim=3, obj_bg_param=None):
+def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj_dim=3, obj_bg_param=None, colors_present=None):
     if min_dim is None:
         min_dim = 5
 
@@ -1501,6 +1547,18 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
         color_choices = [c for c in range(10) if c != obj_bg_param]
         second_color = np.random.choice(color_choices)
         two_colors = np.array([obj_bg_param, second_color])
+    elif colors_present is not None:
+        # If colors_present is specified, try to use colors from that list
+        if len(colors_present) >= 2:
+            two_colors = np.array(colors_present[:2])
+        else:
+            # If not enough colors in colors_present, use what we have and add random ones
+            remaining_colors = [c for c in range(10) if c not in colors_present]
+            if remaining_colors:
+                additional_color = np.random.choice(remaining_colors)
+                two_colors = np.array(colors_present + [additional_color])[:2]
+            else:
+                two_colors = np.random.choice(range(10), 2, replace=False)
     else:
         two_colors = np.random.choice(range(10), 2, replace=False)
 
@@ -1535,7 +1593,7 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
             
     return grid, object_mask
 
-def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None):
+def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
         min_dim = 5
 
@@ -1581,7 +1639,9 @@ def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None):
     # Generate unique colors for objects (different from background)
     available_colors = list(range(10))
     available_colors.remove(bg_color)
-    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    # Ensure required colors are present if specified
+    object_colors, num_objects = ensure_colors_present(available_colors, num_objects, colors_present, bg_color)
 
     min_shape_dim = 3
     max_shape_dim = 6
@@ -1647,7 +1707,7 @@ def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None):
     return grid, object_mask
 
 
-def sample_inner_color_borders(training_path, min_dim=None, max_dim=None):
+def sample_inner_color_borders(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
         min_dim = 6
 
@@ -1661,7 +1721,23 @@ def sample_inner_color_borders(training_path, min_dim=None, max_dim=None):
 
     # Choose 3 distinct colors (not including the background)
     available_colors = list(range(10))
-    border_colors = np.random.choice(available_colors, 3, replace=False)
+    
+    if colors_present is not None:
+        # If colors_present is specified, try to use colors from that list
+        if len(colors_present) >= 3:
+            border_colors = np.array(colors_present[:3])
+        else:
+            # If not enough colors in colors_present, use what we have and add random ones
+            remaining_colors = [c for c in available_colors if c not in colors_present]
+            needed = 3 - len(colors_present)
+            if len(remaining_colors) >= needed:
+                additional_colors = np.random.choice(remaining_colors, needed, replace=False)
+                border_colors = np.array(list(colors_present) + list(additional_colors))
+            else:
+                border_colors = np.random.choice(available_colors, 3, replace=False)
+    else:
+        border_colors = np.random.choice(available_colors, 3, replace=False)
+    
     color_a, color_b, color_c = border_colors
 
     # For 6x6 or 8x8 grid, set the three borders explicitly
@@ -1715,7 +1791,7 @@ def sample_inner_color_borders(training_path, min_dim=None, max_dim=None):
 
     return grid, []
 
-def sample_four_corners(training_path, min_dim=None, max_dim=None):
+def sample_four_corners(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
         min_dim = 5
 
@@ -1745,12 +1821,13 @@ def sample_four_corners(training_path, min_dim=None, max_dim=None):
 
     # Generate 1 to 5 objects
     num_objects = np.random.randint(1, 6)
-    object_colors = []
     
     # Generate unique colors for objects (different from background)
     available_colors = list(range(10))
     available_colors.remove(bg_color)
-    object_colors = np.random.choice(available_colors, num_objects, replace=False)
+    
+    # Ensure required colors are present if specified
+    object_colors, num_objects = ensure_colors_present(available_colors, num_objects, colors_present, bg_color)
 
     # Rectangle object
     max_obj_height = max(3, num_rows // 2)
@@ -1815,7 +1892,7 @@ def sample_four_corners(training_path, min_dim=None, max_dim=None):
     return grid, object_mask
    
 
-def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_same_shape=False):
+def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_same_shape=False, colors_present=None):
     if min_dim is None:
         min_dim = 5
 
