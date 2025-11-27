@@ -1214,16 +1214,20 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
 
 def get_pattern(bg_color, pattern, num_patterns):
 
-    def random_removal(pattern_grid, exclude=None):
+    def random_removal(pattern_grid, exclude=None, to_remove=None):
         px_count = 0
         for row in pattern_grid:
             for val in row:
                 if val != bg_color:
                     px_count += 1
 
-        to_remove = np.random.randint(1, px_count // 2 + 1)
+        # Determine how many to remove
+        if to_remove is not None:
+            num_to_remove = to_remove
+        else:
+            num_to_remove = np.random.randint(1, px_count // 2 + 1)
 
-        # Randomly remove 'to_remove' non-bg_color pixels from pattern (replace with bg_color)
+        # Randomly remove 'num_to_remove' non-bg_color pixels from pattern (replace with bg_color)
         # If exclude is not None, do not remove the pixel at 'exclude' (row, col)
 
         # Find all non-bg_color pixel coordinates
@@ -1235,12 +1239,12 @@ def get_pattern(bg_color, pattern, num_patterns):
                         continue
                     coords.append((i, j))
 
-        if len(coords) == 0 or to_remove == 0:
+        if len(coords) == 0 or num_to_remove == 0:
             return pattern_grid
 
-        # If to_remove > available, just remove all
-        to_remove = min(to_remove, len(coords))
-        remove_coords = np.random.choice(len(coords), size=to_remove, replace=False)
+        # If num_to_remove > available, just remove all
+        num_to_remove = min(num_to_remove, len(coords))
+        remove_coords = np.random.choice(len(coords), size=num_to_remove, replace=False)
         # Make a copy to avoid mutating input
         new_pattern = [list(r) for r in pattern_grid]
         for idx in remove_coords:
@@ -1279,14 +1283,14 @@ def get_pattern(bg_color, pattern, num_patterns):
                 [1, 0, 1]
             ]
         elif pattern == 'plus_hollow':
-            # empty plus with random removal
+            # empty plus with only 1 random pixel removed
             col = np.random.choice([c for c in range(10) if c != bg_color])
             pattern_grid = [
                 [bg_color, col, bg_color],
                 [col, bg_color, col],
                 [bg_color, col, bg_color]
             ]
-            pattern_grid = random_removal(pattern_grid)
+            pattern_grid = random_removal(pattern_grid, to_remove=1)
             pattern_mask = [
                 [0, 1, 0],
                 [1, 0, 1],
@@ -1300,7 +1304,7 @@ def get_pattern(bg_color, pattern, num_patterns):
                 [bg_color, bg_color, bg_color],
                 [col, bg_color, col]
             ]
-            pattern_grid = random_removal(pattern_grid)
+            pattern_grid = random_removal(pattern_grid, to_remove=1)
             pattern_mask = [
                 [1, 0, 1],
                 [0, 0, 0],
@@ -1314,7 +1318,7 @@ def get_pattern(bg_color, pattern, num_patterns):
                 [bg_color, col, bg_color],
                 [col, bg_color, col]
             ]
-            pattern_grid = random_removal(pattern_grid)
+            pattern_grid = random_removal(pattern_grid, to_remove=1)
             pattern_mask = [
                 [1, 0, 1],
                 [0, 1, 0],
@@ -1328,7 +1332,7 @@ def get_pattern(bg_color, pattern, num_patterns):
                 [col, col, col],
                 [bg_color, col, bg_color]
             ]
-            pattern_grid = random_removal(pattern_grid)
+            pattern_grid = random_removal(pattern_grid, to_remove=1)
             pattern_mask = [
                 [0, 1, 0],
                 [1, 1, 1],
@@ -1418,28 +1422,28 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
     pattern_height, pattern_width = pattern_grids[0].shape
     mask_height, mask_width = pattern_masks[0].shape
 
-    # 50% chance to add random noise to the background
-    if np.random.random() < 0.5:
-        # Find all colors used in all pattern_grids (excluding background)
-        pattern_colors = set()
-        for pg in pattern_grids:
-            pattern_colors.update(np.unique(pg))
-        if bg_color in pattern_colors:
-            pattern_colors.remove(bg_color)
-        # Also exclude all object colors (to be extra safe)
-        pattern_colors.update(object_colors)
-        # Choose a noise color that is not in pattern_colors or bg_color
-        possible_noise_colors = [c for c in range(10) if c not in pattern_colors and c != bg_color]
-        if possible_noise_colors:
-            noise_color = np.random.choice(possible_noise_colors)
-            # Number of noisy pixels: between 1 and 50% of the grid area
-            num_noisy_pixels = np.random.randint(1, int(0.5 * num_rows * num_cols) + 1)
-            # Generate random positions for the noise
-            noisy_indices = np.unravel_index(
-                np.random.choice(num_rows * num_cols, num_noisy_pixels, replace=False),
-                (num_rows, num_cols)
-            )
-            grid[noisy_indices] = noise_color
+    # # 50% chance to add random noise to the background
+    # if np.random.random() < 0.5:
+    #     # Find all colors used in all pattern_grids (excluding background)
+    #     pattern_colors = set()
+    #     for pg in pattern_grids:
+    #         pattern_colors.update(np.unique(pg))
+    #     if bg_color in pattern_colors:
+    #         pattern_colors.remove(bg_color)
+    #     # Also exclude all object colors (to be extra safe)
+    #     pattern_colors.update(object_colors)
+    #     # Choose a noise color that is not in pattern_colors or bg_color
+    #     possible_noise_colors = [c for c in range(10) if c not in pattern_colors and c != bg_color]
+    #     if possible_noise_colors:
+    #         noise_color = np.random.choice(possible_noise_colors)
+    #         # Number of noisy pixels: between 1 and 50% of the grid area
+    #         num_noisy_pixels = np.random.randint(1, int(0.5 * num_rows * num_cols) + 1)
+    #         # Generate random positions for the noise
+    #         noisy_indices = np.unravel_index(
+    #             np.random.choice(num_rows * num_cols, num_noisy_pixels, replace=False),
+    #             (num_rows, num_cols)
+    #         )
+    #         grid[noisy_indices] = noise_color
 
     # To prevent overlapping, we will keep a mask of occupied cells (using pattern_mask, not pattern_grid)
     occupied_mask = np.zeros((num_rows, num_cols), dtype=bool)
