@@ -637,11 +637,11 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_pres
         max_rect_height = num_rows
         max_rect_width = num_cols
 
-        if min_rect_size > max_rect_height // 2:
+        if min_rect_size >= max_rect_height // 2:
             rect_height = min_rect_size
         else:
             rect_height = np.random.randint(min_rect_size, max_rect_height // 2)
-        if min_rect_size > max_rect_width // 2:
+        if min_rect_size >= max_rect_width // 2:
             rect_width = min_rect_size
         else:
             rect_width = np.random.randint(min_rect_size, max_rect_width // 2)
