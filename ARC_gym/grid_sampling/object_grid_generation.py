@@ -745,6 +745,10 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_pres
             rect_width = min_rect_size
         else:
             rect_width = np.random.randint(min_rect_size, max_rect_width // 2)
+        
+        # Ensure rectangle fits within grid dimensions
+        rect_height = min(rect_height, num_rows)
+        rect_width = min(rect_width, num_cols)
 
         # Try to find a non-overlapping position for the rectangle
         found_spot = False
@@ -789,6 +793,8 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_pres
             else:
                 rect_seg_height = np.random.randint(min_rect_height, max_rect_height + 1)
             # Random start position along the top edge
+            if left + 2 >= left + rect_width - seg_len - 1:
+                continue
             start_col = np.random.randint(left + 2, left + rect_width - seg_len - 1)
             start_row = top
             # Draw the rectangle with bg_color
@@ -811,6 +817,8 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_pres
             else:
                 rect_seg_height = np.random.randint(min_rect_height, max_rect_height + 1)
             # Random start position along the bottom edge
+            if left + 2 >= left + rect_width - seg_len - 1:
+                continue
             start_col = np.random.randint(left + 2, left + rect_width - seg_len - 1)
             start_row = top + rect_height - rect_seg_height
             # Draw the rectangle with bg_color
@@ -833,6 +841,8 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_pres
             else:
                 rect_seg_width = np.random.randint(min_rect_width, max_rect_width + 1)
             # Random start position along the left edge
+            if top + 2 >= top + rect_height - seg_len - 1:
+                continue
             start_row = np.random.randint(top + 2, top + rect_height - seg_len - 1)
             start_col = left
             # Draw the rectangle with bg_color
@@ -855,6 +865,8 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_pres
             else:
                 rect_seg_width = np.random.randint(min_rect_width, max_rect_width + 1)
             # Random start position along the right edge
+            if top + 2 >= top + rect_height - seg_len - 1:
+                continue
             start_row = np.random.randint(top + 2, top + rect_height - seg_len - 1)
             start_col = left + rect_width - rect_seg_width
             # Draw the rectangle with bg_color
