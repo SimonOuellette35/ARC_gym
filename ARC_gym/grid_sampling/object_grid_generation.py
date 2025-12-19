@@ -593,6 +593,106 @@ def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, f
 
     return grid, object_mask
 
+def count_corners(object_mask, obj_id):
+    """
+    Count the number of corners for a specific object.
+    For each pixel in the object:
+    - Count 4-connected neighbors that are part of the object
+    - Count diagonal neighbors that are part of the object
+    - If exactly 1 diagonal neighbor: outer corner
+    - If exactly 3 diagonal neighbors and 4 4-connected neighbors: inner corner
+    """
+    h, w = object_mask.shape
+    corners = 0
+    
+    obj_pixels = np.argwhere(object_mask == obj_id)
+    
+    for r, c in obj_pixels:
+        # Check 4-connected neighbors (up, down, left, right)
+        up = (r - 1 >= 0 and object_mask[r - 1, c] == obj_id)
+        down = (r + 1 < h and object_mask[r + 1, c] == obj_id)
+        left = (c - 1 >= 0 and object_mask[r, c - 1] == obj_id)
+        right = (c + 1 < w and object_mask[r, c + 1] == obj_id)
+        
+        num_4_neighbors = sum([up, down, left, right])
+        
+        # Check diagonal neighbors (4 diagonal positions)
+        up_left = (r - 1 >= 0 and c - 1 >= 0 and object_mask[r - 1, c - 1] == obj_id)
+        up_right = (r - 1 >= 0 and c + 1 < w and object_mask[r - 1, c + 1] == obj_id)
+        down_left = (r + 1 < h and c - 1 >= 0 and object_mask[r + 1, c - 1] == obj_id)
+        down_right = (r + 1 < h and c + 1 < w and object_mask[r + 1, c + 1] == obj_id)
+        
+        num_diagonal_neighbors = sum([up_left, up_right, down_left, down_right])
+        
+        # Outer corner: exactly 1 diagonal neighbor
+        if num_diagonal_neighbors == 1:
+            corners += 1
+        # Inner corner: exactly 3 diagonal neighbors and 4 4-connected neighbors
+        elif num_diagonal_neighbors == 3 and num_4_neighbors == 4:
+            corners += 1
+    
+    return corners
+
+def sample_max_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
+    while True:
+        grid, object_mask = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
+        
+        # Get all unique object IDs (excluding background 0)
+        unique_objects = np.unique(object_mask)
+        unique_objects = unique_objects[unique_objects != 0]
+        
+        if len(unique_objects) <= 1:
+            continue
+
+        # Count corners for each object
+        corner_counts = {}
+        for obj_id in unique_objects:
+            corner_counts[obj_id] = count_corners(object_mask, obj_id)
+
+        corner_values = list(corner_counts.values())
+        max_corners = max(corner_values)
+        
+        # Count how many objects have the maximum number of corners
+        objects_with_max = sum(1 for count in corner_values if count == max_corners)
+        
+        # Check if exactly one object has max corners and it's strictly more than others
+        if objects_with_max == 1:
+            # Verify it's strictly more than all others
+            other_corners = [count for count in corner_values if count < max_corners]
+            if len(other_corners) == len(corner_values) - 1:
+                return grid, object_mask
+
+
+def sample_min_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
+    while True:
+        grid, object_mask = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
+        
+        # Get all unique object IDs (excluding background 0)
+        unique_objects = np.unique(object_mask)
+        unique_objects = unique_objects[unique_objects != 0]
+        
+        if len(unique_objects) <= 1:
+            continue
+        
+        # Count corners for each object
+        corner_counts = {}
+        for obj_id in unique_objects:
+            corner_counts[obj_id] = count_corners(object_mask, obj_id)
+
+        corner_values = list(corner_counts.values())
+        min_corners = min(corner_values)
+        
+        # Count how many objects have the maximum number of corners
+        objects_with_min = sum(1 for count in corner_values if count == min_corners)
+        
+        # Check if exactly one object has max corners and it's strictly more than others
+        if objects_with_min == 1:
+            # Verify it's strictly more than all others
+            other_corners = [count for count in corner_values if count > min_corners]
+            if len(other_corners) == len(corner_values) - 1:
+                return grid, object_mask
+
+
 def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
         min_dim = 16

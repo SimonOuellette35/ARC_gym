@@ -727,6 +727,10 @@ class GridSampler:
             return OGG.sample_incomplete_pattern(self.training_path, min_dim, max_dim, pattern='square_filled', colors_present=colors_present)
         elif selected_cat == 'corner_objects':
             return OGG.sample_corner_objects(self.training_path, min_dim, max_dim, colors_present=colors_present)
+        elif selected_cat == 'max_corner_objects':
+            return OGG.sample_max_corner_objects(self.training_path, min_dim, max_dim, colors_present=colors_present)
+        elif selected_cat == 'min_corner_objects':
+            return OGG.sample_min_corner_objects(self.training_path, min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'fixed_size_2col_shapes3x3':
             return OGG.sample_fixed_size_2col_shapes(self.training_path, min_dim, max_dim, obj_dim=3, colors_present=colors_present)
         elif selected_cat == 'fixed_size_2col_shapes4x4':
