@@ -1,5 +1,4 @@
 numpy
 matplotlib
-torch
-networkx
 tqdm
+scipy
