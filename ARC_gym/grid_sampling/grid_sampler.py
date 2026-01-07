@@ -17,6 +17,16 @@ class GridSampler:
                                   Only used for grids generated via a random uniform distribution.
         '''
         self.grid_type_ratio = grid_type_ratio
+        
+        # Resolve training_path relative to ARC_gym package root if it's a relative path
+        if not os.path.isabs(training_path):
+            # Get the directory of this file (grid_sampler.py)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            # Go up to ARC_gym package root (from grid_sampling/ to ARC_gym/)
+            package_root = os.path.dirname(os.path.dirname(current_dir))
+            # Construct absolute path
+            training_path = os.path.join(package_root, training_path)
+        
         self.training_path = training_path
         self.min_dim = min_dim
         self.max_dim = max_dim
