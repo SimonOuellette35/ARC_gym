@@ -22,7 +22,7 @@ Additionally, you may need to run:
 pip install -r requirements.txt
 ```
 
-The quickest way to get started is to start from _test_grid_sampler.py_, which is a simple loop that generates grids of a specific category, and then visualizes it and its object mask. 
+The quickest way to get started is to start from _test_grid_sampler.py_, which is a simple loop that generates grids of a specific category, and then visualizes it and its object mask. For a list of all available grid categories, see below. 
 
 ### Object masks
 
