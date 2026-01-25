@@ -1905,7 +1905,10 @@ def sample_inner_color_borders(training_path, min_dim=None, max_dim=None, colors
     # Guarantee exactly 3 distinct colors in the grid (not counting bg_color)
     # (color_a, color_b, and color_c for 6x6; color_a and color_b for 8x8, but color_c is not used in 8x8)
 
-    return grid, []
+    # Initialize object mask (0 for background, positive integers for objects)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+    return grid, object_mask
 
 def sample_four_corners(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
