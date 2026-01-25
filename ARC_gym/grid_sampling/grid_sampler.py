@@ -206,7 +206,9 @@ class GridSampler:
                 if not all(color in grid_colors for color in colors_present):
                     continue
 
-            return grid, None
+            # Initialize object mask (0 for background, positive integers for objects)
+            object_mask = np.zeros((rows, cols), dtype=int)
+            return grid, object_mask
 
     def sample_shearable_grids(self, min_dim, max_dim, colors_present=None):
         valid = False
@@ -284,7 +286,9 @@ class GridSampler:
 
             valid = True
 
-        return input_grid, None
+        # Initialize object mask (0 for background, positive integers for objects)
+        object_mask = np.zeros((height, width), dtype=int)
+        return np.array(input_grid), object_mask
 
 
     def sample_croppable_corners_grids(self, min_dim, max_dim, colors_present=None):
@@ -335,7 +339,9 @@ class GridSampler:
                 colors_valid = all(color in grid_colors for color in colors_present)
             
             if corners_valid and colors_valid:
-                return grid, None
+                # Initialize object mask (0 for background, positive integers for objects)
+                object_mask = np.zeros((rows, cols), dtype=int)
+                return grid, object_mask
 
     def sample_min_count_grids(self, min_dim, max_dim, colors_present=None):
         valid = False
@@ -365,7 +371,9 @@ class GridSampler:
                 grid_colors = set(color_counts.keys())
                 valid = all(color in grid_colors for color in colors_present)
 
-        return input_grid, None
+        # Initialize object mask (0 for background, positive integers for objects)
+        object_mask = np.zeros(input_grid.shape, dtype=int)
+        return input_grid, object_mask
 
 
     def sample_max_count_grids(self, min_dim, max_dim, colors_present=None):
@@ -391,7 +399,9 @@ class GridSampler:
                 grid_colors = set(color_counts.keys())
                 valid = all(color in grid_colors for color in colors_present)
         
-        return input_grid, None
+        # Initialize object mask (0 for background, positive integers for objects)
+        object_mask = np.zeros(input_grid.shape, dtype=int)
+        return input_grid, object_mask
 
     def sample_count_and_draw_grids(self, bg_color, colors_present=None):
         # Generate a random square grid with dimension between 3x3 and 6x6 and fill with background color
@@ -440,7 +450,9 @@ class GridSampler:
                         idx = np.random.randint(len(bg_positions[0]))
                         input_grid[bg_positions[0][idx], bg_positions[1][idx]] = missing_color
 
-        return input_grid, None
+        # Initialize object mask (0 for background, positive integers for objects)
+        object_mask = np.zeros((dim, dim), dtype=int)
+        return input_grid, object_mask
 
     def arc_to_numpy(self, fpath):
         with open(fpath) as f:
