@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ARC_gym"
+version = "0.2"
+description = "Data Generator for the Abstraction & Reasoning Corpus"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Simon Ouellette"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+]
+dependencies = [
+    "numpy",
+]
+
+[project.urls]
+Homepage = "https://github.com/SimonOuellette35/ARC_gym"
+
+[tool.setuptools]
+packages = ["ARC_gym"]
+zip-safe = false
