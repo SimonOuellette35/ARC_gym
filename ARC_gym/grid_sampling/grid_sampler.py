@@ -208,7 +208,7 @@ class GridSampler:
 
             # Initialize object mask (0 for background, positive integers for objects)
             object_mask = np.zeros((rows, cols), dtype=int)
-            return grid, object_mask
+            return grid, object_mask, None
 
     def sample_shearable_grids(self, min_dim, max_dim, colors_present=None):
         valid = False
@@ -341,7 +341,7 @@ class GridSampler:
             if corners_valid and colors_valid:
                 # Initialize object mask (0 for background, positive integers for objects)
                 object_mask = np.zeros((rows, cols), dtype=int)
-                return grid, object_mask
+                return grid, object_mask, None
 
     def sample_min_count_grids(self, min_dim, max_dim, colors_present=None):
         valid = False
@@ -789,6 +789,10 @@ class GridSampler:
             return self.sample_inside_croppable_grids(min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'shearable_grids':
             return self.sample_shearable_grids(min_dim=6, max_dim=20, colors_present=colors_present)
+        elif selected_cat == 'twin_objects_h':
+            return OGG.sample_twin_objects_h(self.training_path, min_dim=6, max_dim=20, colors_present=colors_present)
+        elif selected_cat == 'twin_objects_v':
+            return OGG.sample_twin_objects_v(self.training_path, min_dim=6, max_dim=20, colors_present=colors_present)
 
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True, colors_present=None):
         rnd = np.random.uniform()

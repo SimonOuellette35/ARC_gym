@@ -111,7 +111,7 @@ def return_training_objects(training_examples, training_path, obj_category, crop
         if a < 0.75:
             return get_subgrid(grid, object_mask)
         else:
-            return grid, object_mask
+            return grid, object_mask, None
 
 def get_bg_color_swap(grid, object_mask):
     """
@@ -123,7 +123,7 @@ def get_bg_color_swap(grid, object_mask):
     bg_pixels = grid[object_mask == 0]
     if len(bg_pixels) == 0:
         # No background, return as is
-        return grid, object_mask
+        return grid, object_mask, None
     # Get the most frequent color among background pixels
     vals, counts = np.unique(bg_pixels, return_counts=True)
     bg_color = vals[np.argmax(counts)]
@@ -135,7 +135,7 @@ def get_bg_color_swap(grid, object_mask):
     possible_colors = [c for c in range(10) if c not in object_colors and c != bg_color]
     if not possible_colors:
         # No available color to swap, return as is
-        return grid, object_mask
+        return grid, object_mask, None
     
     new_bg_color = np.random.choice(possible_colors)
 
@@ -174,7 +174,7 @@ def get_subgrid(grid, object_mask):
 
     grid_height, grid_width = grid.shape
     if grid_height < 10 or grid_width < 10:
-        return grid, object_mask
+        return grid, object_mask, None
 
     # Find all unique object IDs (excluding background 0)
     unique_objects = np.unique(object_mask)
@@ -182,7 +182,7 @@ def get_subgrid(grid, object_mask):
     
     if len(unique_objects) == 0:
         # No objects in the grid, return the full grid
-        return grid, object_mask
+        return grid, object_mask, None
     
     # Create a dictionary to store bounding boxes for each object
     object_bounds = {}
@@ -246,7 +246,7 @@ def get_subgrid(grid, object_mask):
         attempts += 1
     
     # If no valid subgrid found after max attempts, return the full grid
-    return grid, object_mask
+    return grid, object_mask, None
     
 
 def sample_distinct_colors_adjacent_training(training_path, fill_mask):
@@ -591,7 +591,7 @@ def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, f
                     else:
                         object_mask[row, col] = obj_id
 
-    return grid, object_mask
+    return grid, object_mask, None
 
 def count_corners(object_mask, obj_id):
     """
@@ -635,7 +635,7 @@ def count_corners(object_mask, obj_id):
 
 def sample_max_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
     while True:
-        grid, object_mask = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
+        grid, object_mask, _ = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
         
         # Get all unique object IDs (excluding background 0)
         unique_objects = np.unique(object_mask)
@@ -660,12 +660,12 @@ def sample_max_corner_objects(training_path, min_dim=None, max_dim=None, colors_
             # Verify it's strictly more than all others
             other_corners = [count for count in corner_values if count < max_corners]
             if len(other_corners) == len(corner_values) - 1:
-                return grid, object_mask
+                return grid, object_mask, None
 
 
 def sample_min_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
     while True:
-        grid, object_mask = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
+        grid, object_mask, _ = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
         
         # Get all unique object IDs (excluding background 0)
         unique_objects = np.unique(object_mask)
@@ -690,7 +690,7 @@ def sample_min_corner_objects(training_path, min_dim=None, max_dim=None, colors_
             # Verify it's strictly more than all others
             other_corners = [count for count in corner_values if count > min_corners]
             if len(other_corners) == len(corner_values) - 1:
-                return grid, object_mask
+                return grid, object_mask, None
 
 
 def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -903,7 +903,7 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_pres
                 inside_mask = (object_mask > 0) & (~edge_mask)
                 grid[inside_mask] = bg_color
 
-    return grid, object_mask
+    return grid, object_mask, None
 
 
 def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=None, fill_mask=False, colors_present=None):
@@ -999,7 +999,7 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
             # No more space for this object, stop placing further objects
             break
             
-    return grid, object_mask
+    return grid, object_mask, None
 
 def sample_single_object(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -1146,7 +1146,7 @@ def sample_single_object(training_path, min_dim=None, max_dim=None, colors_prese
                         grid[row, col] = np.random.choice(available_colors)
                         object_mask[row, col] = obj_id
 
-    return grid, object_mask
+    return grid, object_mask, None
 
 def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -1216,7 +1216,7 @@ def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None, c
 
             break
 
-    return grid, object_mask
+    return grid, object_mask, None
 
 
 def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empty=False, num_objects=None, colors_present=None):
@@ -1322,7 +1322,7 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
 
             break
 
-    return grid, object_mask
+    return grid, object_mask, None
 
 def get_pattern(bg_color, pattern, num_patterns):
 
@@ -1615,7 +1615,7 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
                     object_mask[grid_row, grid_col] = obj_idx + 1
                     occupied_mask[grid_row, grid_col] = True
 
-    return grid, object_mask
+    return grid, object_mask, None
 
 def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj_dim=3, obj_bg_param=None, colors_present=None):
     if min_dim is None:
@@ -1707,7 +1707,7 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
             # No more space for this object, stop placing further objects
             break
             
-    return grid, object_mask
+    return grid, object_mask, None
 
 def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -1820,7 +1820,7 @@ def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None, col
             # No more space for this object, stop placing further objects
             break
 
-    return grid, object_mask
+    return grid, object_mask, None
 
 
 def sample_inner_color_borders(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -1908,7 +1908,7 @@ def sample_inner_color_borders(training_path, min_dim=None, max_dim=None, colors
     # Initialize object mask (0 for background, positive integers for objects)
     object_mask = np.zeros((num_rows, num_cols), dtype=int)
 
-    return grid, object_mask
+    return grid, object_mask, None
 
 def sample_four_corners(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -2008,7 +2008,7 @@ def sample_four_corners(training_path, min_dim=None, max_dim=None, colors_presen
             # No more space for this object, stop placing further objects
             break
             
-    return grid, object_mask
+    return grid, object_mask, None
    
 
 def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_same_shape=False, colors_present=None):
@@ -2100,4 +2100,199 @@ def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_
             # No more space for this object, stop placing further objects
             break
             
-    return grid, object_mask
+    return grid, object_mask, None
+
+
+def sample_twin_objects_v(training_path, min_dim=None, max_dim=None, colors_present=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    # Generate grid dimensions
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    # Generate background color (50% chance for 0, 50% for 1-9)
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    # Initialize grid with background color
+    grid = np.full((num_rows, num_cols), bg_color)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+    sub_objs_mask = []  # list of obj_masks per twin (2 per twin), each with unique sub-object ID
+
+    # Generate 1 to 3 twin objects (each twin = two vertically stacked rectangles)
+    num_objects = np.random.randint(1, 4)
+
+    # Two colors per twin object
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors, _ = ensure_colors_present(available_colors, 2 * num_objects, colors_present, bg_color)
+
+    min_rect_dim = 2
+    max_rect_height = 5
+    max_rect_width = 6
+
+    for obj_idx in range(num_objects):
+        color_top = object_colors[2 * obj_idx]
+        color_bottom = object_colors[2 * obj_idx + 1]
+        obj_id = obj_idx + 1
+
+        found_spot = False
+        for _ in range(50):
+            h1 = np.random.randint(min_rect_dim, min(max_rect_height, num_rows - min_rect_dim) + 1)
+            if num_rows - h1 < min_rect_dim:
+                continue
+            w1 = np.random.randint(min_rect_dim, min(max_rect_width, num_cols) + 1)
+            h2 = np.random.randint(min_rect_dim, min(max_rect_height, num_rows - h1) + 1)
+            w2 = np.random.randint(min_rect_dim, min(max_rect_width, num_cols) + 1)
+
+            r1 = np.random.randint(0, num_rows - (h1 + h2) + 1)
+            c1 = np.random.randint(0, num_cols - w1 + 1)
+            r2 = r1 + h1
+            # Bottom rect must share at least one column with top rect so they touch
+            c2_lo = max(0, c1 - w2 + 1)
+            c2_hi = min(num_cols - w2, c1 + w1 - 1)
+            if c2_lo > c2_hi:
+                continue
+            c2 = np.random.randint(c2_lo, c2_hi + 1)
+
+            top_region = object_mask[r1:r1 + h1, c1:c1 + w1]
+            bottom_region = object_mask[r2:r2 + h2, c2:c2 + w2]
+            if np.any(top_region != 0) or np.any(bottom_region != 0):
+                continue
+
+            # No touching other twins: 4-neighbors of this twin must be empty
+            our_cells = set()
+            for rr in range(r1, r1 + h1):
+                for cc in range(c1, c1 + w1):
+                    our_cells.add((rr, cc))
+            for rr in range(r2, r2 + h2):
+                for cc in range(c2, c2 + w2):
+                    our_cells.add((rr, cc))
+            boundary = set()
+            for (rr, cc) in our_cells:
+                for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    nr, nc = rr + dr, cc + dc
+                    if 0 <= nr < num_rows and 0 <= nc < num_cols and (nr, nc) not in our_cells:
+                        boundary.add((nr, nc))
+            if any(object_mask[r, c] != 0 for r, c in boundary):
+                continue
+
+            grid[r1:r1 + h1, c1:c1 + w1] = color_top
+            object_mask[r1:r1 + h1, c1:c1 + w1] = obj_id
+            grid[r2:r2 + h2, c2:c2 + w2] = color_bottom
+            object_mask[r2:r2 + h2, c2:c2 + w2] = obj_id
+
+            # One mask per twin: bbox-sized, 0=bg, 1=top rect, 2=bottom rect
+            r_lo, c_lo = r1, min(c1, c2)
+            twin_h, twin_w = h1 + h2, max(c1 + w1, c2 + w2) - c_lo
+            obj_mask = np.zeros((twin_h, twin_w), dtype=int)
+            obj_mask[0:h1, c1 - c_lo:c1 - c_lo + w1] = 1
+            obj_mask[h1:h1 + h2, c2 - c_lo:c2 - c_lo + w2] = 2
+            sub_objs_mask.append(obj_mask)
+            found_spot = True
+            break
+
+        if not found_spot:
+            break
+
+    return grid, object_mask, sub_objs_mask
+
+
+def sample_twin_objects_h(training_path, min_dim=None, max_dim=None, colors_present=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    num_rows = np.random.randint(min_dim, max_dim + 1)
+    num_cols = np.random.randint(min_dim, max_dim + 1)
+
+    if np.random.random() < 0.5:
+        bg_color = 0
+    else:
+        bg_color = np.random.randint(1, 10)
+
+    grid = np.full((num_rows, num_cols), bg_color)
+    object_mask = np.zeros((num_rows, num_cols), dtype=int)
+    sub_objs_mask = []
+
+    num_objects = np.random.randint(1, 4)
+
+    available_colors = list(range(10))
+    available_colors.remove(bg_color)
+    object_colors, _ = ensure_colors_present(available_colors, 2 * num_objects, colors_present, bg_color)
+
+    min_rect_dim = 2
+    max_rect_height = 5
+    max_rect_width = 6
+
+    for obj_idx in range(num_objects):
+        color_left = object_colors[2 * obj_idx]
+        color_right = object_colors[2 * obj_idx + 1]
+        obj_id = obj_idx + 1
+
+        found_spot = False
+        for _ in range(50):
+            w1 = np.random.randint(min_rect_dim, min(max_rect_width, num_cols - min_rect_dim) + 1)
+            if num_cols - w1 < min_rect_dim:
+                continue
+            h1 = np.random.randint(min_rect_dim, min(max_rect_height, num_rows) + 1)
+            w2 = np.random.randint(min_rect_dim, min(max_rect_width, num_cols - w1) + 1)
+            h2 = np.random.randint(min_rect_dim, min(max_rect_height, num_rows) + 1)
+
+            c1 = np.random.randint(0, num_cols - w1 - w2 + 1)
+            r1 = np.random.randint(0, num_rows - h1 + 1)
+            c2 = c1 + w1
+            r2_lo = max(0, r1 - h2 + 1)
+            r2_hi = min(num_rows - h2, r1 + h1 - 1)
+            if r2_lo > r2_hi:
+                continue
+            r2 = np.random.randint(r2_lo, r2_hi + 1)
+
+            left_region = object_mask[r1:r1 + h1, c1:c1 + w1]
+            right_region = object_mask[r2:r2 + h2, c2:c2 + w2]
+            if np.any(left_region != 0) or np.any(right_region != 0):
+                continue
+
+            our_cells = set()
+            for rr in range(r1, r1 + h1):
+                for cc in range(c1, c1 + w1):
+                    our_cells.add((rr, cc))
+            for rr in range(r2, r2 + h2):
+                for cc in range(c2, c2 + w2):
+                    our_cells.add((rr, cc))
+            boundary = set()
+            for (rr, cc) in our_cells:
+                for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    nr, nc = rr + dr, cc + dc
+                    if 0 <= nr < num_rows and 0 <= nc < num_cols and (nr, nc) not in our_cells:
+                        boundary.add((nr, nc))
+            if any(object_mask[r, c] != 0 for r, c in boundary):
+                continue
+
+            grid[r1:r1 + h1, c1:c1 + w1] = color_left
+            object_mask[r1:r1 + h1, c1:c1 + w1] = obj_id
+            grid[r2:r2 + h2, c2:c2 + w2] = color_right
+            object_mask[r2:r2 + h2, c2:c2 + w2] = obj_id
+
+            r_lo, c_lo = min(r1, r2), c1
+            twin_h = max(r1 + h1, r2 + h2) - r_lo
+            twin_w = w1 + w2
+            obj_mask = np.zeros((twin_h, twin_w), dtype=int)
+            obj_mask[r1 - r_lo:r1 - r_lo + h1, 0:w1] = 1
+            obj_mask[r2 - r_lo:r2 - r_lo + h2, w1:w1 + w2] = 2
+            sub_objs_mask.append(obj_mask)
+            found_spot = True
+            break
+
+        if not found_spot:
+            break
+
+    return grid, object_mask, sub_objs_mask
