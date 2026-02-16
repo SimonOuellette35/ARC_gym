@@ -123,7 +123,7 @@ def get_bg_color_swap(grid, object_mask):
     bg_pixels = grid[object_mask == 0]
     if len(bg_pixels) == 0:
         # No background, return as is
-        return grid, object_mask, None
+        return grid, object_mask
     # Get the most frequent color among background pixels
     vals, counts = np.unique(bg_pixels, return_counts=True)
     bg_color = vals[np.argmax(counts)]
@@ -135,7 +135,7 @@ def get_bg_color_swap(grid, object_mask):
     possible_colors = [c for c in range(10) if c not in object_colors and c != bg_color]
     if not possible_colors:
         # No available color to swap, return as is
-        return grid, object_mask, None
+        return grid, object_mask
     
     new_bg_color = np.random.choice(possible_colors)
 
@@ -241,7 +241,7 @@ def get_subgrid(grid, object_mask):
         
         if not truncated:
             # Found a valid subgrid
-            return sub_grid, sub_object_mask
+            return sub_grid, sub_object_mask, None
         
         attempts += 1
     

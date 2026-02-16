@@ -288,7 +288,7 @@ class GridSampler:
 
         # Initialize object mask (0 for background, positive integers for objects)
         object_mask = np.zeros((height, width), dtype=int)
-        return np.array(input_grid), object_mask
+        return np.array(input_grid), object_mask, None
 
 
     def sample_croppable_corners_grids(self, min_dim, max_dim, colors_present=None):
@@ -373,7 +373,7 @@ class GridSampler:
 
         # Initialize object mask (0 for background, positive integers for objects)
         object_mask = np.zeros(input_grid.shape, dtype=int)
-        return input_grid, object_mask
+        return input_grid, object_mask, None
 
 
     def sample_max_count_grids(self, min_dim, max_dim, colors_present=None):
@@ -401,7 +401,7 @@ class GridSampler:
         
         # Initialize object mask (0 for background, positive integers for objects)
         object_mask = np.zeros(input_grid.shape, dtype=int)
-        return input_grid, object_mask
+        return input_grid, object_mask, None
 
     def sample_count_and_draw_grids(self, bg_color, colors_present=None):
         # Generate a random square grid with dimension between 3x3 and 6x6 and fill with background color
@@ -452,7 +452,7 @@ class GridSampler:
 
         # Initialize object mask (0 for background, positive integers for objects)
         object_mask = np.zeros((dim, dim), dtype=int)
-        return input_grid, object_mask
+        return input_grid, object_mask, None
 
     def arc_to_numpy(self, fpath):
         with open(fpath) as f:
@@ -719,7 +719,7 @@ class GridSampler:
             return OGG.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim, colors_present=colors_present)
         elif selected_cat == 'distinct_colors_adjacent_empty':
             return OGG.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim, colors_present=colors_present)
-        if selected_cat == 'distinct_colors_adjacent_fill':
+        elif selected_cat == 'distinct_colors_adjacent_fill':
             return OGG.sample_distinct_colors_adjacent(self.training_path, min_dim, max_dim, fill_mask=True, colors_present=colors_present)
         elif selected_cat == 'distinct_colors_adjacent_empty_fill':
             return OGG.sample_distinct_colors_adjacent_empty(self.training_path, min_dim, max_dim, fill_mask=True, colors_present=colors_present)
