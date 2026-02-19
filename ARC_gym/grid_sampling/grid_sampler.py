@@ -711,6 +711,7 @@ class GridSampler:
     def sample_by_category(self, categories, min_dim=None, max_dim=None, bg_color=0, colors_present=None):
 
         selected_cat = np.random.choice(categories)
+        print(f"Selected category: {selected_cat}")
 
         # Distinct colors adjacent means that objects are grouped by their uniform color. Adjacent objects
         # are separated by the fact that they are of a different color. Diagonally adjacent pixels belong
@@ -793,7 +794,12 @@ class GridSampler:
             return OGG.sample_twin_objects_h(self.training_path, min_dim=6, max_dim=20, colors_present=colors_present)
         elif selected_cat == 'twin_objects_v':
             return OGG.sample_twin_objects_v(self.training_path, min_dim=6, max_dim=20, colors_present=colors_present)
-
+        elif selected_cat == 'basic':
+            return self.sample(bg_color, min_dim, max_dim, colors_present=colors_present)
+        else:
+            print(f"Invalid category {selected_cat}")
+    
+    
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True, colors_present=None):
         rnd = np.random.uniform()
 
