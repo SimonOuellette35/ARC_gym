@@ -711,7 +711,6 @@ class GridSampler:
     def sample_by_category(self, categories, min_dim=None, max_dim=None, bg_color=0, colors_present=None):
 
         selected_cat = np.random.choice(categories)
-        print(f"Selected category: {selected_cat}")
 
         # Distinct colors adjacent means that objects are grouped by their uniform color. Adjacent objects
         # are separated by the fact that they are of a different color. Diagonally adjacent pixels belong
