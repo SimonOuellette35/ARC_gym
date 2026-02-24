@@ -797,6 +797,14 @@ class GridSampler:
             return OGG.sample_max_inner_objs(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)
         elif selected_cat == 'min_inner_objs':
             return OGG.sample_min_inner_objs(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)
+        elif selected_cat == 'odd_one_out_color':
+            return OGG.sample_odd_one_out_color(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+        elif selected_cat == 'odd_one_out_width':
+            return OGG.sample_odd_one_out_width(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+        elif selected_cat == 'odd_one_out_height':
+            return OGG.sample_odd_one_out_height(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+        elif selected_cat == 'odd_one_out_size':
+            return OGG.sample_odd_one_out_size(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
         elif selected_cat == 'basic':
             return self.sample(bg_color, min_dim, max_dim, colors_present=colors_present)
         else:
