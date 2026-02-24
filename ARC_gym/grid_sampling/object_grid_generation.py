@@ -2154,6 +2154,118 @@ def sample_odd_one_out_height(training_path, min_dim=None, max_dim=None, colors_
 
     return grid, object_mask, None
 
+def _object_pixel_count(shape_type, h, w):
+    """Number of pixels in the object (filled area or border for empty rect)."""
+    if shape_type == 'filled_rect':
+        return h * w
+    return 2 * h + 2 * w - 4  # empty_rect: border only
+
+
+def _enumerate_dims_for_size(target_size, max_h, max_w):
+    """Yield (shape_type, h, w) such that pixel count equals target_size and fits in max_h, max_w."""
+    for shape_type in ('filled_rect', 'empty_rect'):
+        if shape_type == 'filled_rect':
+            for h in range(3, min(target_size // 3, max_h) + 1):
+                if target_size % h == 0:
+                    w = target_size // h
+                    if 3 <= w <= max_w:
+                        yield shape_type, h, w
+        else:
+            half = (target_size + 4) // 2
+            if half < 6:
+                continue
+            for h in range(3, min(half - 2, max_h) + 1):
+                w = half - h
+                if 3 <= w <= max_w:
+                    yield shape_type, h, w
+
+
+def sample_odd_one_out_size(training_path, min_dim=None, max_dim=None, colors_present=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    while True:
+        # Generate grid dimensions
+        num_rows = np.random.randint(min_dim, max_dim + 1)
+        num_cols = np.random.randint(min_dim, max_dim + 1)
+
+        # Generate background color (50% chance for 0, 50% for 1-9)
+        if np.random.random() < 0.5:
+            bg_color = 0
+        else:
+            bg_color = np.random.randint(1, 10)
+
+        # Initialize grid with background color
+        grid = np.full((num_rows, num_cols), bg_color)
+        object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+        max_obj_height = max(3, num_rows // 2)
+        max_obj_width = max(3, num_cols // 2)
+
+        # Build achievable sizes (pixel counts that fit in grid)
+        achievable_sizes = set()
+        for h in range(3, max_obj_height + 1):
+            for w in range(3, max_obj_width + 1):
+                achievable_sizes.add(h * w)
+                achievable_sizes.add(2 * h + 2 * w - 4)
+        achievable_sizes = [s for s in achievable_sizes if s >= 8]
+
+        # 3 to 7 objects; any color except bg; all same pixel count except one (odd one out)
+        num_objects = np.random.randint(3, 8)
+        available_colors = [c for c in range(10) if c != bg_color]
+        odd_out_idx = np.random.randint(0, num_objects)
+        common_size = int(np.random.choice(achievable_sizes))
+        other_sizes = [s for s in achievable_sizes if s != common_size]
+        odd_size = int(np.random.choice(other_sizes)) if other_sizes else common_size
+
+        for obj_idx in range(num_objects):
+            obj_color = int(np.random.choice(available_colors))
+            target_size = odd_size if obj_idx == odd_out_idx else common_size
+            options = list(_enumerate_dims_for_size(target_size, max_obj_height, max_obj_width))
+            if not options:
+                break
+            shape_type, obj_height, obj_width = options[np.random.randint(len(options))]
+            obj_id = obj_idx + 1
+            forbidden_mask = scipy.ndimage.binary_dilation(object_mask != 0, structure=np.ones((3, 3)))
+
+            found_spot = False
+            for _ in range(50):
+                if num_rows < obj_height or num_cols < obj_width:
+                    continue
+                start_row = np.random.randint(0, num_rows - obj_height + 1)
+                start_col = np.random.randint(0, num_cols - obj_width + 1)
+                region = forbidden_mask[start_row:start_row + obj_height, start_col:start_col + obj_width]
+                if np.any(region):
+                    continue
+
+                if shape_type == 'filled_rect':
+                    grid[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_color
+                    object_mask[start_row:start_row + obj_height, start_col:start_col + obj_width] = obj_id
+                else:
+                    grid[start_row, start_col:start_col + obj_width] = obj_color
+                    grid[start_row + obj_height - 1, start_col:start_col + obj_width] = obj_color
+                    if obj_height > 2:
+                        grid[start_row + 1:start_row + obj_height - 1, start_col] = obj_color
+                        grid[start_row + 1:start_row + obj_height - 1, start_col + obj_width - 1] = obj_color
+                    object_mask[start_row, start_col:start_col + obj_width] = obj_id
+                    object_mask[start_row + obj_height - 1, start_col:start_col + obj_width] = obj_id
+                    if obj_height > 2:
+                        object_mask[start_row + 1:start_row + obj_height - 1, start_col] = obj_id
+                        object_mask[start_row + 1:start_row + obj_height - 1, start_col + obj_width - 1] = obj_id
+                found_spot = True
+                break
+
+            if not found_spot:
+                break
+
+        placed_ids = set(np.unique(object_mask)) - {0}
+        # Need at least 3 objects and the odd-one-out must be among them (so exactly 1 has odd_size, rest common_size)
+        if len(placed_ids) >= 3 and (odd_out_idx + 1) in placed_ids:
+            return grid, object_mask, None
+
 def sample_odd_one_out_color(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
         min_dim = 5
