@@ -809,10 +809,10 @@ class GridSampler:
             return OGG.sample_odd_one_out_symmetry_h(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
         elif selected_cat == 'odd_one_out_sym_v':
             return OGG.sample_odd_one_out_symmetry_v(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
-        # elif selected_cat == 'odd_one_out_non_sym_h':
-        #     return OGG.sample_odd_one_out_non_symmetry_h(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
-        # elif selected_cat == 'odd_one_out_non_sym_v':
-        #     return OGG.sample_odd_one_out_non_symmetry_v(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        =
+        elif selected_cat == 'odd_one_out_non_sym_h':
+            return OGG.sample_odd_one_out_non_symmetry_h(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+        elif selected_cat == 'odd_one_out_non_sym_v':
+            return OGG.sample_odd_one_out_non_symmetry_v(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)
         elif selected_cat == 'basic':
             return self.sample(bg_color, min_dim, max_dim, colors_present=colors_present)
         else:

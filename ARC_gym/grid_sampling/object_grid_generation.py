@@ -2440,18 +2440,20 @@ def _grow_blob_asymmetric_vertical(num_rows, num_cols, forbidden_mask, target_si
             continue
         if not _is_vertically_symmetric(pixels):
             return pixels
-        rows = [r for (r, _) in pixels]
-        min_r, max_r = min(rows), max(rows)
-        center_double = min_r + max_r
+
+        # Blob is symmetric by chance: try adding a neighbor pixel that truly breaks symmetry.
+        # Re-check symmetry after each candidate addition to avoid issues from a changed bounding box.
         for r, c in list(pixels):
             for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nr, nc = r + dr, c + dc
-                if nr < 0 or nr >= num_rows or nc < 0 or nc >= num_cols or (nr, nc) in pixels or forbidden_mask[nr, nc]:
+                if nr < 0 or nr >= num_rows or nc < 0 or nc >= num_cols:
                     continue
-                mirror_nr = center_double - nr
-                if (mirror_nr, nc) not in pixels:
-                    pixels.add((nr, nc))
-                    return pixels
+                if (nr, nc) in pixels or forbidden_mask[nr, nc]:
+                    continue
+                candidate = set(pixels)
+                candidate.add((nr, nc))
+                if not _is_vertically_symmetric(candidate):
+                    return candidate
     return None
 
 
@@ -2479,20 +2481,175 @@ def _grow_blob_asymmetric(num_rows, num_cols, forbidden_mask, target_size):
             continue
         if not _is_horizontally_symmetric(pixels):
             return pixels
-        # Blob is symmetric by chance: add one pixel that breaks symmetry (neighbor whose mirror is not in set)
-        cols = [c for (_, c) in pixels]
-        min_c, max_c = min(cols), max(cols)
-        center_double = min_c + max_c
+
+        # Blob is symmetric by chance: try adding a neighbor pixel that truly breaks symmetry.
+        # Re-check symmetry after each candidate addition to avoid artifacts from a changed bounding box.
         for r, c in list(pixels):
             for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nr, nc = r + dr, c + dc
-                if nr < 0 or nr >= num_rows or nc < 0 or nc >= num_cols or (nr, nc) in pixels or forbidden_mask[nr, nc]:
+                if nr < 0 or nr >= num_rows or nc < 0 or nc >= num_cols:
                     continue
-                mirror_nc = center_double - nc
-                if (nr, mirror_nc) not in pixels:
-                    pixels.add((nr, nc))
-                    return pixels
+                if (nr, nc) in pixels or forbidden_mask[nr, nc]:
+                    continue
+                candidate = set(pixels)
+                candidate.add((nr, nc))
+                if not _is_horizontally_symmetric(candidate):
+                    return candidate
     return None
+
+
+def sample_odd_one_out_non_symmetry_h(training_path, min_dim=None, max_dim=None, colors_present=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    while True:
+        num_rows = np.random.randint(min_dim, max_dim + 1)
+        num_cols = np.random.randint(min_dim, max_dim + 1)
+
+        if np.random.random() < 0.5:
+            bg_color = 0
+        else:
+            bg_color = np.random.randint(1, 10)
+
+        grid = np.full((num_rows, num_cols), bg_color)
+        object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+        max_obj_height = max(3, num_rows // 2)
+        max_obj_width = max(3, num_cols // 2)
+        max_blob_size = max(8, (num_rows * num_cols) // (8 * 4))
+
+        num_objects = np.random.randint(3, 8)
+        available_colors = [c for c in range(10) if c != bg_color]
+        odd_out_idx = np.random.randint(0, num_objects)
+
+        for obj_idx in range(num_objects):
+            obj_color = int(np.random.choice(available_colors))
+            obj_id = obj_idx + 1
+            forbidden_mask = scipy.ndimage.binary_dilation(object_mask != 0, structure=np.ones((3, 3)))
+            is_odd_out = obj_idx == odd_out_idx
+            target_size = np.random.randint(5, max_blob_size + 1)
+
+            found_spot = False
+            if is_odd_out:
+                for _ in range(50):
+                    H = np.random.randint(3, max_obj_height + 1)
+                    W = np.random.randint(3, max_obj_width + 1)
+                    if num_rows < H or num_cols < W:
+                        continue
+                    sr = np.random.randint(0, num_rows - H + 1)
+                    sc = np.random.randint(0, num_cols - W + 1)
+
+                    if np.any(forbidden_mask[sr:sr + H, sc:sc + W]):
+                        continue
+
+                    # Odd-out object: horizontally symmetric
+                    pixels = _grow_blob_symmetric_horizontal(
+                        num_rows, num_cols, forbidden_mask, sr, sc, H, W, target_size
+                    )
+                    if pixels:
+                        for r, c in pixels:
+                            grid[r, c] = obj_color
+                            object_mask[r, c] = obj_id
+                        found_spot = True
+                        break
+            else:
+                # Other objects: horizontally non-symmetric
+                for _ in range(50):
+                    pixels = _grow_blob_asymmetric(num_rows, num_cols, forbidden_mask, target_size)
+
+                    if pixels:
+                        for r, c in pixels:
+                            grid[r, c] = obj_color
+                            object_mask[r, c] = obj_id
+                        found_spot = True
+                        break
+
+            if not found_spot:
+                break
+
+        placed_ids = set(np.unique(object_mask)) - {0}
+        if len(placed_ids) >= 3 and (odd_out_idx + 1) in placed_ids:
+            return grid, object_mask, None
+
+
+def sample_odd_one_out_non_symmetry_v(training_path, min_dim=None, max_dim=None, colors_present=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    while True:
+        num_rows = np.random.randint(min_dim, max_dim + 1)
+        num_cols = np.random.randint(min_dim, max_dim + 1)
+
+        if np.random.random() < 0.5:
+            bg_color = 0
+        else:
+            bg_color = np.random.randint(1, 10)
+
+        grid = np.full((num_rows, num_cols), bg_color)
+        object_mask = np.zeros((num_rows, num_cols), dtype=int)
+
+        max_obj_height = max(3, num_rows // 2)
+        max_obj_width = max(3, num_cols // 2)
+        max_blob_size = max(8, (num_rows * num_cols) // (8 * 4))
+
+        num_objects = np.random.randint(3, 8)
+        available_colors = [c for c in range(10) if c != bg_color]
+        odd_out_idx = np.random.randint(0, num_objects)
+
+        for obj_idx in range(num_objects):
+            obj_color = int(np.random.choice(available_colors))
+            obj_id = obj_idx + 1
+            forbidden_mask = scipy.ndimage.binary_dilation(object_mask != 0, structure=np.ones((3, 3)))
+            is_odd_out = obj_idx == odd_out_idx
+            target_size = np.random.randint(5, max_blob_size + 1)
+
+            found_spot = False
+            if is_odd_out:
+                for _ in range(50):
+                    H = np.random.randint(3, max_obj_height + 1)
+                    W = np.random.randint(3, max_obj_width + 1)
+                    if num_rows < H or num_cols < W:
+                        continue
+                    sr = np.random.randint(0, num_rows - H + 1)
+                    sc = np.random.randint(0, num_cols - W + 1)
+
+                    if np.any(forbidden_mask[sr:sr + H, sc:sc + W]):
+                        continue
+
+                    # Odd-out object: vertically symmetric
+                    pixels = _grow_blob_symmetric_vertical(
+                        num_rows, num_cols, forbidden_mask, sr, sc, H, W, target_size
+                    )
+                    if pixels:
+                        for r, c in pixels:
+                            grid[r, c] = obj_color
+                            object_mask[r, c] = obj_id
+                        found_spot = True
+                        break
+            else:
+                # Other objects: vertically non-symmetric
+                for _ in range(50):
+                    pixels = _grow_blob_asymmetric_vertical(num_rows, num_cols, forbidden_mask, target_size)
+
+                    if pixels:
+                        for r, c in pixels:
+                            grid[r, c] = obj_color
+                            object_mask[r, c] = obj_id
+                        found_spot = True
+                        break
+
+            if not found_spot:
+                break
+
+        placed_ids = set(np.unique(object_mask)) - {0}
+        if len(placed_ids) >= 3 and (odd_out_idx + 1) in placed_ids:
+            return grid, object_mask, None
 
 
 def sample_odd_one_out_symmetry_h(training_path, min_dim=None, max_dim=None, colors_present=None):
