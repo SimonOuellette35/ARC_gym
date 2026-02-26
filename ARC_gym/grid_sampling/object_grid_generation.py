@@ -3328,17 +3328,17 @@ def sample_max_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
             if not found_spot:
                 break
 
-        # Ensure the object with the least sub-objects has a unique count
+        # Ensure the object with the most sub-objects has a unique count
         if sub_objs_mask:
             counts = [int(m.max()) for m in sub_objs_mask]
-            min_count = min(counts)
-            while counts.count(min_count) > 1:
-                idx_with_min = next(i for i, c in enumerate(counts) if c == min_count)
-                r0, c0, h, w = rect_bounds[idx_with_min]
-                obj_id = idx_with_min + 1
-                mask = sub_objs_mask[idx_with_min]
-                rect_color = object_colors[2 * idx_with_min]
-                sub_color = object_colors[2 * idx_with_min + 1]
+            max_count = max(counts)
+            while counts.count(max_count) > 1:
+                idx_with_max = next(i for i, c in enumerate(counts) if c == max_count)
+                r0, c0, h, w = rect_bounds[idx_with_max]
+                obj_id = idx_with_max + 1
+                mask = sub_objs_mask[idx_with_max]
+                rect_color = object_colors[2 * idx_with_max]
+                sub_color = object_colors[2 * idx_with_max + 1]
                 used_or_adjacent = set()
                 for dr in range(h):
                     for dc in range(w):
@@ -3346,13 +3346,28 @@ def sample_max_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
                             for nr, nc in [(dr, dc), (dr - 1, dc), (dr + 1, dc), (dr, dc - 1), (dr, dc + 1)]:
                                 if 0 <= nr < h and 0 <= nc < w:
                                     used_or_adjacent.add((nr, nc))
-                new_sub_idx = min_count + 1
-                _place_sub_in_rect(grid, object_mask, sub_objs_mask, r0, c0, h, w, obj_id, rect_color, sub_color, grid_sub_type, new_sub_idx, used_or_adjacent, mask_idx=idx_with_min)
+                new_sub_idx = max_count + 1
+                _place_sub_in_rect(
+                    grid,
+                    object_mask,
+                    sub_objs_mask,
+                    r0,
+                    c0,
+                    h,
+                    w,
+                    obj_id,
+                    rect_color,
+                    sub_color,
+                    grid_sub_type,
+                    new_sub_idx,
+                    used_or_adjacent,
+                    mask_idx=idx_with_max,
+                )
                 counts = [int(m.max()) for m in sub_objs_mask]
-                min_count = min(counts)
+                max_count = max(counts)
 
         counts = [int(m.max()) for m in sub_objs_mask] if sub_objs_mask else []
-        if len(sub_objs_mask) >= 2 and counts and counts.count(min(counts)) == 1:
+        if len(sub_objs_mask) >= 2 and counts and counts.count(max(counts)) == 1:
             return grid, object_mask, sub_objs_mask
 
 def sample_min_inner_objs(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -3455,3 +3470,139 @@ def sample_min_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
         counts = [int(m.max()) for m in sub_objs_mask] if sub_objs_mask else []
         if len(sub_objs_mask) >= 2 and counts and counts.count(min(counts)) == 1:
             return grid, object_mask, sub_objs_mask
+
+def sample_odd_one_out_subobj_count(training_path, min_dim=None, max_dim=None, colors_present=None):
+    if min_dim is None:
+        min_dim = 5
+
+    if max_dim is None:
+        max_dim = 30
+
+    while True:
+        num_rows = np.random.randint(min_dim, max_dim + 1)
+        num_cols = np.random.randint(min_dim, max_dim + 1)
+
+        if np.random.random() < 0.5:
+            bg_color = 0
+        else:
+            bg_color = np.random.randint(1, 10)
+
+        grid = np.full((num_rows, num_cols), bg_color)
+        object_mask = np.zeros((num_rows, num_cols), dtype=int)
+        sub_objs_mask = []
+
+        # 2 to 6 rectangles depending on grid size
+        num_rects = min(6, max(2, 2 + min(num_rows, num_cols) // 6))
+        num_rects = np.random.randint(2, num_rects + 1)
+
+        available_colors = list(range(10))
+        available_colors.remove(bg_color)
+        object_colors, _ = ensure_colors_present(available_colors, 2 * num_rects, colors_present, bg_color)
+
+        min_rect_dim = 5
+        max_rect_height = min(12, num_rows)
+        max_rect_width = min(14, num_cols)
+
+        # One sub-object type for the whole grid
+        grid_sub_type = np.random.choice(["pixel", "plus", "square"])
+
+        rect_bounds = []  # (r0, c0, h, w) per placed object for unique-max fixup
+
+        for obj_idx in range(num_rects):
+            rect_color = object_colors[2 * obj_idx]
+            sub_color = object_colors[2 * obj_idx + 1]
+            obj_id = obj_idx + 1
+
+            found_spot = False
+            for _ in range(50):
+                w = np.random.randint(min_rect_dim, max_rect_width + 1)
+                h = np.random.randint(min_rect_dim, max_rect_height + 1)
+                if w > num_cols or h > num_rows:
+                    continue
+                c0 = np.random.randint(0, num_cols - w + 1)
+                r0 = np.random.randint(0, num_rows - h + 1)
+
+                region = object_mask[r0:r0 + h, c0:c0 + w]
+                if np.any(region != 0):
+                    continue
+
+                grid[r0:r0 + h, c0:c0 + w] = rect_color
+                object_mask[r0:r0 + h, c0:c0 + w] = obj_id
+                obj_mask = np.zeros((h, w), dtype=int)
+                sub_objs_mask.append(obj_mask)
+                rect_bounds.append((r0, c0, h, w))
+
+                num_subs = np.random.randint(1, 4)
+                used_or_adjacent = set()
+
+                for sub_idx in range(1, num_subs + 1):
+                    if not _place_sub_in_rect(grid, object_mask, sub_objs_mask, r0, c0, h, w, obj_id, rect_color, sub_color, grid_sub_type, sub_idx, used_or_adjacent):
+                        break
+
+                found_spot = True
+                break
+
+            if not found_spot:
+                break
+
+        # Post-process so that all objects share the same sub-object count
+        # except for exactly one odd-one-out object. Require at least 3 objects.
+        if sub_objs_mask:
+            def _add_one_sub(idx):
+                """Attempt to add a single sub-object inside rectangle idx. Returns True on success."""
+                r0, c0, h, w = rect_bounds[idx]
+                obj_id = idx + 1
+                mask = sub_objs_mask[idx]
+                rect_color = object_colors[2 * idx]
+                sub_color = object_colors[2 * idx + 1]
+                used_or_adjacent = set()
+                for dr in range(h):
+                    for dc in range(w):
+                        if mask[dr, dc] > 0:
+                            for nr, nc in [(dr, dc), (dr - 1, dc), (dr + 1, dc), (dr, dc - 1), (dr, dc + 1)]:
+                                if 0 <= nr < h and 0 <= nc < w:
+                                    used_or_adjacent.add((nr, nc))
+                new_sub_idx = int(mask.max()) + 1
+                return _place_sub_in_rect(
+                    grid,
+                    object_mask,
+                    sub_objs_mask,
+                    r0,
+                    c0,
+                    h,
+                    w,
+                    obj_id,
+                    rect_color,
+                    sub_color,
+                    grid_sub_type,
+                    new_sub_idx,
+                    used_or_adjacent,
+                    mask_idx=idx,
+                )
+
+            counts = [int(m.max()) for m in sub_objs_mask]
+
+            if len(sub_objs_mask) >= 3:
+                # Raise all objects up towards the global max count (only adding subs).
+                common_target = max(counts)
+                for idx in range(len(sub_objs_mask)):
+                    while counts[idx] < common_target:
+                        if not _add_one_sub(idx):
+                            break
+                        counts[idx] = int(sub_objs_mask[idx].max())
+
+                # Pick one object and try to give it an extra sub-object
+                # so its count differs from the common target.
+                odd_idx = np.random.randint(0, len(sub_objs_mask))
+                if counts[odd_idx] == common_target:
+                    if _add_one_sub(odd_idx):
+                        counts[odd_idx] = int(sub_objs_mask[odd_idx].max())
+
+        counts = [int(m.max()) for m in sub_objs_mask] if sub_objs_mask else []
+        if len(sub_objs_mask) >= 3 and counts:
+            unique_vals = set(counts)
+            if len(unique_vals) == 2:
+                # Exactly one of the two counts must occur once.
+                for v in unique_vals:
+                    if counts.count(v) == 1:
+                        return grid, object_mask, sub_objs_mask
