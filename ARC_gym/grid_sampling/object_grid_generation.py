@@ -40,7 +40,12 @@ def ensure_colors_present(available_colors, num_objects, colors_present, bg_colo
         
         object_colors = np.array(object_colors)
     else:
-        object_colors = np.random.choice(available_colors, num_objects, replace=False)
+        # When there is no explicit color constraint, we still want one color
+        # per object. If the requested number of objects exceeds the number of
+        # available distinct colors, allow sampling with replacement to avoid
+        # requesting a larger sample than the color population.
+        replace = num_objects > len(available_colors)
+        object_colors = np.random.choice(available_colors, num_objects, replace=replace)
     
     return object_colors, num_objects
 
