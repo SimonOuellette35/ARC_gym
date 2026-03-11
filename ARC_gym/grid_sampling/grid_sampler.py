@@ -790,36 +790,355 @@ class GridSampler:
         elif selected_cat == 'shearable_grids':
             return self.sample_shearable_grids(min_dim=6, max_dim=20, colors_present=colors_present)
         elif selected_cat == 'twin_objects_h':
-            return OGG.sample_twin_objects_h(self.training_path, min_dim=6, max_dim=20, colors_present=colors_present)
+            return OGG.sample_twin_objects_h(self.training_path, min_dim=6, max_dim=30, colors_present=colors_present)
         elif selected_cat == 'twin_objects_v':
-            return OGG.sample_twin_objects_v(self.training_path, min_dim=6, max_dim=20, colors_present=colors_present)
+            return OGG.sample_twin_objects_v(self.training_path, min_dim=6, max_dim=30, colors_present=colors_present)
         elif selected_cat == 'max_inner_objs':
-            return OGG.sample_max_inner_objs(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)
+            return OGG.sample_max_inner_objs(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)
         elif selected_cat == 'min_inner_objs':
-            return OGG.sample_min_inner_objs(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)
+            return OGG.sample_min_inner_objs(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)
         elif selected_cat == 'odd_one_out_color':
-            return OGG.sample_odd_one_out_color(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+            return OGG.sample_odd_one_out_color(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)        
         elif selected_cat == 'odd_one_out_width':
-            return OGG.sample_odd_one_out_width(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+            return OGG.sample_odd_one_out_width(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)        
         elif selected_cat == 'odd_one_out_height':
-            return OGG.sample_odd_one_out_height(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+            return OGG.sample_odd_one_out_height(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)        
         elif selected_cat == 'odd_one_out_size':
-            return OGG.sample_odd_one_out_size(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+            return OGG.sample_odd_one_out_size(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)        
         elif selected_cat == 'odd_one_out_sym_h':
-            return OGG.sample_odd_one_out_symmetry_h(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+            return OGG.sample_odd_one_out_symmetry_h(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)        
         elif selected_cat == 'odd_one_out_sym_v':
-            return OGG.sample_odd_one_out_symmetry_v(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+            return OGG.sample_odd_one_out_symmetry_v(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)        
         elif selected_cat == 'odd_one_out_non_sym_h':
-            return OGG.sample_odd_one_out_non_symmetry_h(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)        
+            return OGG.sample_odd_one_out_non_symmetry_h(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)        
         elif selected_cat == 'odd_one_out_non_sym_v':
-            return OGG.sample_odd_one_out_non_symmetry_v(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)
+            return OGG.sample_odd_one_out_non_symmetry_v(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)
         elif selected_cat == 'odd_one_out_subobj_count':
-            return OGG.sample_odd_one_out_subobj_count(self.training_path, min_dim=10, max_dim=20, colors_present=colors_present)
+            return OGG.sample_odd_one_out_subobj_count(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)
+        elif selected_cat == 'merge':
+            return self.sample_merge_task(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)
         elif selected_cat == 'basic':
             return self.sample(bg_color, min_dim, max_dim, colors_present=colors_present)
         else:
             print(f"Invalid category {selected_cat}")
     
+    def sample_merge_task(self, training_path, min_dim=None, max_dim=None, colors_present=None):
+        if min_dim is None:
+            min_dim = 3
+
+        if max_dim is None:
+            max_dim = 30
+
+        # Orientation: horizontal stripes, vertical stripes, or 2x2 blocks
+        orientation = np.random.choice(["horizontal", "vertical", "square"])
+
+        # For horizontal/vertical layouts, choose 2–4 sub-grids; for square we always have 4
+        if orientation in ["horizontal", "vertical"]:
+            num_subgrids = np.random.randint(2, 5)
+        else:  # square 2x2 layout
+            num_subgrids = 4
+
+        # Decide whether there will be a boundary between sub-grids
+        has_boundary = np.random.rand() < 0.5
+        boundary_thickness = 1 if has_boundary else 0
+
+        # Background color: 50% chance of being black (0)
+        if np.random.rand() < 0.5:
+            bg_color = 0
+        else:
+            bg_color = np.random.randint(1, 10)
+
+        # Determine grid dimensions and sub-grid extents so that
+        # every sub-grid has equal size.
+        if orientation == "horizontal":
+            # All stripes share the same height (= num_rows) and width (= sub_w),
+            # with optional 1-column boundaries between them.
+            # num_cols = num_subgrids * sub_w + boundary_thickness * (num_subgrids - 1)
+            # Each sub-grid must be at least 3 columns wide and at most 6.
+            min_interior = max(3 * num_subgrids, min_dim - boundary_thickness * (num_subgrids - 1))
+            # Cap each sub-grid width to at most 6:
+            # interior_width / num_subgrids <= 6  => interior_width <= 6 * num_subgrids
+            max_interior = max_dim - boundary_thickness * (num_subgrids - 1)
+            max_interior = min(max_interior, 6 * num_subgrids)
+            if max_interior < min_interior:
+                max_interior = min_interior
+            interior_width = np.random.randint(min_interior, max_interior + 1)
+            # Force interior_width divisible by num_subgrids
+            interior_width = interior_width - (interior_width % num_subgrids)
+            if interior_width == 0:
+                interior_width = num_subgrids
+            sub_w = interior_width // num_subgrids
+            num_cols = interior_width + boundary_thickness * (num_subgrids - 1)
+
+            # Enforce a horizontally elongated grid: width >= height (and typically >).
+            base_min_rows = min_dim
+            base_max_rows = min(max_dim, num_cols)
+            if base_max_rows < base_min_rows:
+                base_max_rows = base_min_rows
+            if base_max_rows > base_min_rows:
+                num_rows = np.random.randint(base_min_rows, base_max_rows + 1)
+            else:
+                num_rows = base_min_rows
+
+            num_rows_total, num_cols_total = num_rows, num_cols
+
+        elif orientation == "vertical":
+            # All stripes share the same width (= num_cols) and height (= sub_h),
+            # with optional 1-row boundaries between them.
+            # num_rows = num_subgrids * sub_h + boundary_thickness * (num_subgrids - 1)
+            # Each sub-grid must be at least 3 rows tall and at most 6.
+            min_interior = max(3 * num_subgrids, min_dim - boundary_thickness * (num_subgrids - 1))
+            # Cap each sub-grid height to at most 6:
+            # interior_height / num_subgrids <= 6  => interior_height <= 6 * num_subgrids
+            max_interior = max_dim - boundary_thickness * (num_subgrids - 1)
+            max_interior = min(max_interior, 6 * num_subgrids)
+            if max_interior < min_interior:
+                max_interior = min_interior
+            interior_height = np.random.randint(min_interior, max_interior + 1)
+            # Force interior_height divisible by num_subgrids
+            interior_height = interior_height - (interior_height % num_subgrids)
+            if interior_height == 0:
+                interior_height = num_subgrids
+            sub_h = interior_height // num_subgrids
+            num_rows = interior_height + boundary_thickness * (num_subgrids - 1)
+
+            # Enforce a vertically elongated grid: height >= width (and typically >).
+            base_min_cols = min_dim
+            base_max_cols = min(max_dim, num_rows)
+            if base_max_cols < base_min_cols:
+                base_max_cols = base_min_cols
+            if base_max_cols > base_min_cols:
+                num_cols = np.random.randint(base_min_cols, base_max_cols + 1)
+            else:
+                num_cols = base_min_cols
+
+            num_rows_total, num_cols_total = num_rows, num_cols
+
+        else:  # square 2x2 arrangement
+            # 2x2 equal sub-grids. The side length is chosen so that:
+            # - each sub-grid is between 3x3 and 6x6
+            # - the overall grid is square and has odd dimensions.
+            boundary = boundary_thickness
+            # Side length (before enforcing odd) is 2 * sub + boundary.
+            # After possibly adding +1 to make it odd, we require side <= max_dim.
+            max_sub_from_dim = (max_dim - boundary - 1) // 2
+            max_sub = min(6, max_sub_from_dim)
+            # Minimum sub-grid side length is 3, but fall back gracefully if impossible.
+            min_sub = 3
+            if max_sub < min_sub:
+                min_sub = 1
+            sub = np.random.randint(min_sub, max_sub + 1)
+            sub_h = sub
+            sub_w = sub
+            side = 2 * sub + boundary
+            # When there is no boundary, make the grid exactly 2*sub by 2*sub
+            # so that all rows/columns are part of the four sub-grids.
+            # For boundary > 0, keeping the existing side is fine.
+            num_rows = side
+            num_cols = side
+
+            num_rows_total, num_cols_total = num_rows, num_cols
+
+        # Initialize grid and object mask
+        grid = np.full((num_rows_total, num_cols_total), bg_color, dtype=np.int8)
+        object_mask = np.zeros((num_rows_total, num_cols_total), dtype=int)
+
+        # Decide foreground colors for each sub-grid
+        all_colors = list(range(10))
+        available_fg_colors = [c for c in all_colors if c != bg_color]
+
+        subgrid_colors = []
+        boundary_color = None
+        if colors_present is not None:
+            required = set(colors_present)
+            # Colors that still need to appear as foreground (not satisfied by background)
+            needed_fg = [c for c in required if c != bg_color]
+
+            # We cannot have more distinct foreground colors than sub-grids
+            if len(needed_fg) > num_subgrids:
+                needed_fg = list(np.random.choice(needed_fg, size=num_subgrids, replace=False))
+
+            # Start by assigning each needed color to its own sub-grid (as much as possible)
+            for c in needed_fg:
+                subgrid_colors.append(c)
+
+            # Fill the remaining sub-grids
+            while len(subgrid_colors) < num_subgrids:
+                if not has_boundary:
+                    # Prefer distinct colors between sub-grids when no boundary
+                    remaining = [c for c in available_fg_colors if c not in subgrid_colors]
+                    if remaining:
+                        subgrid_colors.append(np.random.choice(remaining))
+                    else:
+                        subgrid_colors.append(np.random.choice(available_fg_colors))
+                else:
+                    subgrid_colors.append(np.random.choice(available_fg_colors))
+        else:
+            if has_boundary:
+                # No constraints and boundaries: allow repetition
+                subgrid_colors = list(np.random.choice(available_fg_colors, size=num_subgrids, replace=True))
+            else:
+                # No boundaries: try to give each sub-grid a distinct color when possible
+                if len(available_fg_colors) >= num_subgrids:
+                    subgrid_colors = list(np.random.choice(available_fg_colors, size=num_subgrids, replace=False))
+                else:
+                    # Not enough distinct colors; use all distinct ones then repeat if needed
+                    chosen = list(np.random.choice(available_fg_colors, size=len(available_fg_colors), replace=False))
+                    while len(chosen) < num_subgrids:
+                        chosen.append(np.random.choice(available_fg_colors))
+                    subgrid_colors = chosen[:num_subgrids]
+
+        # Shuffle to avoid positional bias
+        subgrid_colors = list(subgrid_colors)
+        np.random.shuffle(subgrid_colors)
+
+        # Choose boundary color if needed: must be distinct from background
+        # and from all sub-grid foreground colors.
+        if has_boundary:
+            forbidden = {bg_color} | set(subgrid_colors)
+            allowed = [c for c in all_colors if c not in forbidden]
+            if allowed:
+                boundary_color = int(np.random.choice(allowed))
+            else:
+                # Fallback: pick any non-background color (very unlikely path).
+                boundary_color = int(np.random.choice([c for c in all_colors if c != bg_color]))
+
+        # Fill sub-grids and object mask with random foreground pixels
+        if orientation == "horizontal":
+            col = 0
+            for idx in range(num_subgrids):
+                color = subgrid_colors[idx]
+                obj_id = idx + 1
+                h = num_rows_total
+                w = sub_w
+                area = h * w
+                # Mark the entire sub-grid (including its background pixels) as one object
+                object_mask[:, col : col + sub_w] = obj_id
+                # Random number of foreground pixels in this sub-grid (at least 1)
+                density = np.random.uniform(0.1, 0.6)
+                num_fg = max(1, int(area * density))
+                num_fg = min(num_fg, area)
+                flat_indices = np.random.choice(area, size=num_fg, replace=False)
+                rows = flat_indices // w
+                cols = flat_indices % w
+                # Map to global coordinates
+                rows_global = rows
+                cols_global = cols + col
+                grid[rows_global, cols_global] = color
+                col += sub_w
+                if has_boundary and idx < num_subgrids - 1:
+                    # Paint vertical boundary column with boundary_color (mask remains 0)
+                    grid[:, col : col + boundary_thickness] = boundary_color
+                    col += boundary_thickness
+
+        elif orientation == "vertical":
+            row = 0
+            for idx in range(num_subgrids):
+                color = subgrid_colors[idx]
+                obj_id = idx + 1
+                h = sub_h
+                w = num_cols_total
+                area = h * w
+                # Mark the entire sub-grid (including its background pixels) as one object
+                object_mask[row : row + sub_h, :] = obj_id
+                # Random number of foreground pixels in this sub-grid (at least 1)
+                density = np.random.uniform(0.1, 0.6)
+                num_fg = max(1, int(area * density))
+                num_fg = min(num_fg, area)
+                flat_indices = np.random.choice(area, size=num_fg, replace=False)
+                rows = flat_indices // w
+                cols = flat_indices % w
+                # Map to global coordinates
+                rows_global = rows + row
+                cols_global = cols
+                grid[rows_global, cols_global] = color
+                row += sub_h
+                if has_boundary and idx < num_subgrids - 1:
+                    # Paint horizontal boundary row with boundary_color (mask remains 0)
+                    grid[row : row + boundary_thickness, :] = boundary_color
+                    row += boundary_thickness
+
+        else:  # square 2x2
+            # Define row/col ranges from sub_h/sub_w and optional central boundary
+            r0 = 0
+            r1 = sub_h
+            if has_boundary:
+                r2 = r1 + boundary_thickness
+                r3 = r2 + sub_h
+            else:
+                r2 = r1
+                r3 = r2 + sub_h
+
+            c0 = 0
+            c1 = sub_w
+            if has_boundary:
+                c2 = c1 + boundary_thickness
+                c3 = c2 + sub_w
+            else:
+                c2 = c1
+                c3 = c2 + sub_w
+
+            # Top-left sub-grid
+            object_mask[r0:r1, c0:c1] = 1
+            h = r1 - r0
+            w = c1 - c0
+            area = h * w
+            density = np.random.uniform(0.1, 0.6)
+            num_fg = max(1, int(area * density))
+            num_fg = min(num_fg, area)
+            flat_indices = np.random.choice(area, size=num_fg, replace=False)
+            rows = flat_indices // w
+            cols = flat_indices % w
+            grid[r0 + rows, c0 + cols] = subgrid_colors[0]
+
+            # Top-right sub-grid
+            object_mask[r0:r1, c2:c3] = 2
+            h = r1 - r0
+            w = c3 - c2
+            area = h * w
+            density = np.random.uniform(0.1, 0.6)
+            num_fg = max(1, int(area * density))
+            num_fg = min(num_fg, area)
+            flat_indices = np.random.choice(area, size=num_fg, replace=False)
+            rows = flat_indices // w
+            cols = flat_indices % w
+            grid[r0 + rows, c2 + cols] = subgrid_colors[1]
+
+            # Bottom-left sub-grid
+            object_mask[r2:r3, c0:c1] = 3
+            h = r3 - r2
+            w = c1 - c0
+            area = h * w
+            density = np.random.uniform(0.1, 0.6)
+            num_fg = max(1, int(area * density))
+            num_fg = min(num_fg, area)
+            flat_indices = np.random.choice(area, size=num_fg, replace=False)
+            rows = flat_indices // w
+            cols = flat_indices % w
+            grid[r2 + rows, c0 + cols] = subgrid_colors[2]
+
+            # Bottom-right sub-grid
+            object_mask[r2:r3, c2:c3] = 4
+            h = r3 - r2
+            w = c3 - c2
+            area = h * w
+            density = np.random.uniform(0.1, 0.6)
+            num_fg = max(1, int(area * density))
+            num_fg = min(num_fg, area)
+            flat_indices = np.random.choice(area, size=num_fg, replace=False)
+            rows = flat_indices // w
+            cols = flat_indices % w
+            grid[r2 + rows, c2 + cols] = subgrid_colors[3]
+
+            # Finally, paint the cross boundaries if present.
+            if has_boundary:
+                # Horizontal boundary between top and bottom halves
+                grid[r1:r2, :] = boundary_color
+                # Vertical boundary between left and right halves
+                grid[:, c1:c2] = boundary_color
+
+        return grid, object_mask, None
+
     
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True, colors_present=None):
         rnd = np.random.uniform()
