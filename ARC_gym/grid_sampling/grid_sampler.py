@@ -815,14 +815,56 @@ class GridSampler:
             return OGG.sample_odd_one_out_non_symmetry_v(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)
         elif selected_cat == 'odd_one_out_subobj_count':
             return OGG.sample_odd_one_out_subobj_count(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)
-        elif selected_cat == 'merge':
-            return self.sample_merge_task(self.training_path, min_dim=10, max_dim=30, colors_present=colors_present)
+        elif selected_cat == 'merge_2h':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=15, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['horizontal'], num_subgrids_override=2, use_boundary=False)
+        elif selected_cat == 'merge_2v':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=15, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['vertical'], num_subgrids_override=2, use_boundary=False)
+        elif selected_cat == 'merge_2x2':
+            return self.sample_merge_task(self.training_path, min_dim=6, max_dim=15, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['square'], use_boundary=False)
+        elif selected_cat == 'merge_3h':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=20, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['horizontal'], num_subgrids_override=3, use_boundary=False)
+        elif selected_cat == 'merge_3v':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=20, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['vertical'], num_subgrids_override=3, use_boundary=False)
+        elif selected_cat == 'merge_4h':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=25, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['horizontal'], num_subgrids_override=4, use_boundary=False)
+        elif selected_cat == 'merge_4v':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=25, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['vertical'], num_subgrids_override=4, use_boundary=False)
+        elif selected_cat == 'merge_2h_b':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=15, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['horizontal'], num_subgrids_override=2, use_boundary=True)
+        elif selected_cat == 'merge_2v_b':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=15, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['vertical'], num_subgrids_override=2, use_boundary=True)
+        elif selected_cat == 'merge_2x2_b':
+            return self.sample_merge_task(self.training_path, min_dim=6, max_dim=15, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['square'], use_boundary=True)
+        elif selected_cat == 'merge_3h_b':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=20, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['horizontal'], num_subgrids_override=3, use_boundary=True)
+        elif selected_cat == 'merge_3v_b':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=20, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['vertical'], num_subgrids_override=3, use_boundary=True)
+        elif selected_cat == 'merge_4h_b':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=25, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['horizontal'], num_subgrids_override=4, use_boundary=True)
+        elif selected_cat == 'merge_4v_b':
+            return self.sample_merge_task(self.training_path, min_dim=3, max_dim=25, bg_color=bg_color, colors_present=colors_present, 
+                                          types=['vertical'], num_subgrids_override=4, use_boundary=True)
+
         elif selected_cat == 'basic':
             return self.sample(bg_color, min_dim, max_dim, colors_present=colors_present)
         else:
             print(f"Invalid category {selected_cat}")
     
-    def sample_merge_task(self, training_path, min_dim=None, max_dim=None, colors_present=None):
+    def sample_merge_task(self, training_path, min_dim, max_dim, bg_color, colors_present, types=None, num_subgrids_override=None,
+                          use_boundary=None):
         if min_dim is None:
             min_dim = 3
 
@@ -830,7 +872,10 @@ class GridSampler:
             max_dim = 30
 
         # Orientation: horizontal stripes, vertical stripes, or 2x2 blocks
-        orientation = np.random.choice(["horizontal", "vertical", "square"])
+        if types is None:
+            orientation = np.random.choice(["horizontal", "vertical", "square"])
+        else:
+            orientation = np.random.choice(types)
 
         # For horizontal/vertical layouts, choose 2–4 sub-grids; for square we always have 4
         if orientation in ["horizontal", "vertical"]:
@@ -838,15 +883,15 @@ class GridSampler:
         else:  # square 2x2 layout
             num_subgrids = 4
 
+        if num_subgrids_override is not None:
+            num_subgrids = num_subgrids_override
+
         # Decide whether there will be a boundary between sub-grids
         has_boundary = np.random.rand() < 0.5
-        boundary_thickness = 1 if has_boundary else 0
+        if use_boundary is not None:
+            has_boundary = use_boundary
 
-        # Background color: 50% chance of being black (0)
-        if np.random.rand() < 0.5:
-            bg_color = 0
-        else:
-            bg_color = np.random.randint(1, 10)
+        boundary_thickness = 1 if has_boundary else 0
 
         # Determine grid dimensions and sub-grid extents so that
         # every sub-grid has equal size.
