@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.ndimage import label
 
 
 class ObjectDetector:
@@ -974,36 +973,8 @@ class ObjectDetector:
         vals, counts = np.unique(grid, return_counts=True)
         bg_color = vals[np.argmax(counts)]
 
-        # Create a mask for all non-background pixels (the object)
-        object_mask = np.zeros_like(grid, dtype=int)
-        object_mask[grid != bg_color] = 1
-
-        # Remove single-pixel noise: set to 0 any non-bg pixel that is not 8-connected to any other non-bg pixel
-        # Label 8-connected components in the object mask
-        structure = np.ones((3, 3), dtype=int)  # 8-connectivity
-        labeled, num_features = label(object_mask, structure=structure)
-
-        # For each component, check its size; if size == 1, set it to background (0)
-        for comp_id in range(1, num_features + 1):
-            coords = np.argwhere(labeled == comp_id)
-            if coords.shape[0] == 1:
-                # Single-pixel component, set to background
-                object_mask[coords[0][0], coords[0][1]] = 0
-
-        # Find the bounding rectangle of the object (all non-bg pixels)
-        rows, cols = np.where(object_mask == 1)
-        if len(rows) == 0 or len(cols) == 0:
-            # No object found, return all zeros
-            return object_mask
-
-        min_row, max_row = rows.min(), rows.max()
-        min_col, max_col = cols.min(), cols.max()
-
-        # Fill the rectangle region covering the object
-        object_mask[:, :] = 0
-        object_mask[min_row:max_row+1, min_col:max_col+1] = 1
-
-        return object_mask
+        # Every non-background pixel belongs to the (single) object.
+        return (grid != bg_color).astype(int)
         
     @staticmethod
     def get_objects_fixed_size_2col_shapes(grid, task_id):
@@ -1890,6 +1861,7 @@ class ObjectDetector:
 
         result = ObjectDetector.check_special_case(grid, task_id, grid_idx, fill_mask)
         if result is not None:
+            print("==> Was a special case!")
             return np.array(result)
         
         if category == 'distinct_colors_adjacent':

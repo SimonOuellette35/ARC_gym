@@ -51,11 +51,12 @@ def ensure_colors_present(available_colors, num_objects, colors_present, bg_colo
 
 
 
-def return_training_objects(training_examples, training_path, obj_category, crop_augment=True):
+def return_training_objects(training_examples, training_path, obj_category, hint):
     
     while True:
         selected_example = random.choice(training_examples)
 
+        print(f"Selected example: {selected_example}")
         # load the example from file.
         task_id = selected_example[0]
         json_path = '%s/%s.json' % (training_path, task_id)
@@ -114,9 +115,9 @@ def return_training_objects(training_examples, training_path, obj_category, crop
 
         a = np.random.uniform()
         if a < 0.75:
-            return get_subgrid(grid, object_mask)
+            return get_subgrid(grid, object_mask, hint)
         else:
-            return grid, object_mask, None
+            return grid, object_mask, None, hint
 
 def get_bg_color_swap(grid, object_mask):
     """
@@ -156,7 +157,7 @@ def get_bg_color_swap(grid, object_mask):
         
     return new_grid, object_mask
 
-def get_subgrid(grid, object_mask):
+def get_subgrid(grid, object_mask, hint):
     """
     Return a randomly selected subgrid from the grid that:
     - contains at least one object (check the corresponding positions in object_mask)
@@ -176,10 +177,9 @@ def get_subgrid(grid, object_mask):
         import sys
         sys.exit(1)
 
-
     grid_height, grid_width = grid.shape
     if grid_height < 10 or grid_width < 10:
-        return grid, object_mask, None
+        return grid, object_mask, None, hint
 
     # Find all unique object IDs (excluding background 0)
     unique_objects = np.unique(object_mask)
@@ -187,7 +187,7 @@ def get_subgrid(grid, object_mask):
     
     if len(unique_objects) == 0:
         # No objects in the grid, return the full grid
-        return grid, object_mask, None
+        return grid, object_mask, None, hint
     
     # Create a dictionary to store bounding boxes for each object
     object_bounds = {}
@@ -246,12 +246,12 @@ def get_subgrid(grid, object_mask):
         
         if not truncated:
             # Found a valid subgrid
-            return sub_grid, sub_object_mask, None
+            return sub_grid, sub_object_mask, None, hint
         
         attempts += 1
     
     # If no valid subgrid found after max attempts, return the full grid
-    return grid, object_mask, None
+    return grid, object_mask, None, hint
     
 
 def sample_distinct_colors_adjacent_training(training_path, fill_mask):
@@ -291,10 +291,11 @@ def sample_distinct_colors_adjacent_training(training_path, fill_mask):
         ('e41c6fd3', 0)
     ]
 
+    hint = 'fill-color' if fill_mask else 'pixel-color'
     if fill_mask:
-        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_fill')
+        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_fill', hint)
     else:
-        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent')
+        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent', hint)
 
 def sample_distinct_colors_adjacent_empty_training(training_path, fill_mask):
     training_examples = [
@@ -328,10 +329,11 @@ def sample_distinct_colors_adjacent_empty_training(training_path, fill_mask):
         ('e7dd8335', 0)
     ]
 
+    hint = 'fill-color' if fill_mask else 'pixel-color'
     if fill_mask:
-        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty_fill')
+        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty_fill', hint)
     else:
-        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
+        return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty', hint)
 
 def sample_non_symmetrical_shapes_training(training_path):
     training_examples = [
@@ -358,7 +360,7 @@ def sample_non_symmetrical_shapes_training(training_path):
         ('d37a1ef5', 2)
     ]
 
-    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
+    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty', 'pixel-color')
 
 def sample_incomplete_rectangles_training(training_path):
     training_examples = [
@@ -368,27 +370,27 @@ def sample_incomplete_rectangles_training(training_path):
         ('3aa6fb7a', 0)
     ]
 
-    return return_training_objects(training_examples, training_path, 'incomplete_rectangles')
+    return return_training_objects(training_examples, training_path, 'incomplete_rectangles', 'incomplete-rect')
 
 def sample_incomplete_pattern_training(training_path, pattern):
     if pattern == 'dot_plus':
         training_examples = [
             ('d364b489', 0)
         ]
-        return return_training_objects(training_examples, training_path, 'pattern_dot_plus')
+        return return_training_objects(training_examples, training_path, 'pattern_dot_plus', 'incomplete_dot_plus')
     
     elif pattern == 'square_hollow':
         training_examples = [
             ('9caba7c3', 0),
         ]
 
-        return return_training_objects(training_examples, training_path, 'pattern_square_hollow')
+        return return_training_objects(training_examples, training_path, 'pattern_square_hollow', 'incomplete_square_hollow')
     elif pattern == 'plus_filled':
         training_examples = [
             ('14754a24', 0)
         ]
 
-        return return_training_objects(training_examples, training_path, 'pattern_plus_filled')
+        return return_training_objects(training_examples, training_path, 'pattern_plus_filled', 'incomplete_plus_filled')
 
 def sample_uniform_rect_noisy_bg_training(training_path):
     training_examples = [
@@ -396,16 +398,16 @@ def sample_uniform_rect_noisy_bg_training(training_path):
         ('8731374e', 0)
     ]
 
-    return return_training_objects(training_examples, training_path, 'uniform_color_noisy_bg')
+    return return_training_objects(training_examples, training_path, 'uniform_color_noisy_bg', 'fill-rect')
 
 def sample_four_corners_training(training_path):
     training_examples = [
         ('af902bf9', 0)
     ]
 
-    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty')
+    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty', 'four-corners')
 
-def sample_single_object_training(training_path):
+def sample_single_object_training(training_path, hint):
     training_examples = [
         ('11852cab', 1),
         ('150deff5', 2),
@@ -418,7 +420,6 @@ def sample_single_object_training(training_path):
         ('28bf18c6', 0),
         ('396d80d7', 0),
         ('4938f0c2', 2),
-        ('4c5c2cf0', 2),
         ('73182012', 0),
         ('7468f01a', 0),
         ('bf32578f', 2),
@@ -426,7 +427,7 @@ def sample_single_object_training(training_path):
         ('e7dd8335', 2)
     ]
 
-    return return_training_objects(training_examples, training_path, 'single_object')
+    return return_training_objects(training_examples, training_path, 'single_object', hint)
 
 def sample_fixed_size_2col_shapes_training(training_path, obj_dim):
     if obj_dim == 3:
@@ -466,7 +467,7 @@ def sample_fixed_size_2col_shapes_training(training_path, obj_dim):
     #('6430c8c4', 0),
     #('66f2d22f', 0),
 
-    return return_training_objects(training_examples, training_path, 'fixed_size_2col_shapes')
+    return return_training_objects(training_examples, training_path, 'fixed_size_2col_shapes', 'incomplete-same-rect')
 
 
 def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, fill_mask=False, colors_present=None):
@@ -1027,7 +1028,7 @@ def sample_single_object(training_path, min_dim=None, max_dim=None, colors_prese
     a = np.random.uniform()
 
     if a < 0.25:
-        return sample_single_object_training(training_path)
+        return sample_single_object_training(training_path, 'pixel-fg')
 
     # Generate grid dimensions
     num_rows = np.random.randint(min_dim, max_dim + 1)
@@ -1162,7 +1163,8 @@ def sample_single_object(training_path, min_dim=None, max_dim=None, colors_prese
                         grid[row, col] = np.random.choice(available_colors)
                         object_mask[row, col] = obj_id
 
-    return grid, object_mask, None
+    hint = 'pixel-fg'
+    return grid, object_mask, None, hint
 
 def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
