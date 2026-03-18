@@ -6,8 +6,9 @@ sampler = GridSampler()
 
 while True:
 
-     grid, object_mask, sub_objs_mask = sampler.sample_by_category(['twin_objects_h'])
+     grid, object_mask, sub_objs_mask, hint = sampler.sample_by_category(['odd_one_out_color'])
 
+     print(f"Hint: {hint}")
      viz.draw_grid_pair(grid, object_mask)
      if sub_objs_mask is not None:
           for twin_id, sobj_mask in enumerate(sub_objs_mask):

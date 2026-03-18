@@ -596,7 +596,11 @@ def sample_distinct_colors_adjacent(training_path, min_dim=None, max_dim=None, f
                     else:
                         object_mask[row, col] = obj_id
 
-    return grid, object_mask, None
+    if fill_mask:
+        hint = 'fill-color'
+    else:
+        hint = 'pixel-color'
+    return grid, object_mask, None, hint
 
 def count_corners(object_mask, obj_id):
     """
@@ -665,7 +669,8 @@ def sample_max_corner_objects(training_path, min_dim=None, max_dim=None, colors_
             # Verify it's strictly more than all others
             other_corners = [count for count in corner_values if count < max_corners]
             if len(other_corners) == len(corner_values) - 1:
-                return grid, object_mask, None
+                hint = 'fill-color'
+                return grid, object_mask, None, hint
 
 
 def sample_min_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -695,7 +700,8 @@ def sample_min_corner_objects(training_path, min_dim=None, max_dim=None, colors_
             # Verify it's strictly more than all others
             other_corners = [count for count in corner_values if count > min_corners]
             if len(other_corners) == len(corner_values) - 1:
-                return grid, object_mask, None
+                hint = 'fill-color'
+                return grid, object_mask, None, hint
 
 
 def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -908,7 +914,8 @@ def sample_corner_objects(training_path, min_dim=None, max_dim=None, colors_pres
                 inside_mask = (object_mask > 0) & (~edge_mask)
                 grid[inside_mask] = bg_color
 
-    return grid, object_mask, None
+    hint = 'fill-color'
+    return grid, object_mask, None, hint
 
 
 def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=None, fill_mask=False, colors_present=None):
@@ -1004,7 +1011,11 @@ def sample_distinct_colors_adjacent_empty(training_path, min_dim=None, max_dim=N
             # No more space for this object, stop placing further objects
             break
             
-    return grid, object_mask, None
+    if fill_mask:
+        hint = 'fill-color'
+    else:
+        hint = 'pixel-color'
+    return grid, object_mask, None, hint
 
 def sample_single_object(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -1221,7 +1232,8 @@ def sample_simple_filled_rectangles(training_path, min_dim=None, max_dim=None, c
 
             break
 
-    return grid, object_mask, None
+    hint = 'fill-color'
+    return grid, object_mask, None, hint
 
 
 def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empty=False, num_objects=None, colors_present=None):
@@ -1327,7 +1339,12 @@ def sample_uniform_rect_noisy_bg(training_path, min_dim=None, max_dim=None, empt
 
             break
 
-    return grid, object_mask, None
+    if empty:
+        hint = 'empty-rect'
+    else:
+        hint = 'fill-rect'
+
+    return grid, object_mask, None, hint
 
 def get_pattern(bg_color, pattern, num_patterns):
 
@@ -1620,7 +1637,26 @@ def sample_incomplete_pattern(training_path, min_dim=None, max_dim=None, pattern
                     object_mask[grid_row, grid_col] = obj_idx + 1
                     occupied_mask[grid_row, grid_col] = True
 
-    return grid, object_mask, None
+    if pattern == 'dot_plus':
+        hint = 'incomplete_dot_plus'
+    elif pattern == 'dot_x':
+        hint = 'incomplete_dot_x'
+    elif pattern == 'plus_hollow':
+        hint = 'incomplete_plus_hollow'
+    elif pattern == 'x_hollow':
+        hint = 'incomplete_x_hollow'
+    elif pattern == 'plus_filled':
+        hint = 'incomplete_plus_filled'
+    elif pattern == 'x_filled':
+        hint = 'incomplete_x_filled'
+    elif pattern == 'square_hollow':
+        hint = 'incomplete_square_hollow'
+    elif pattern == 'square_filled':
+        hint = 'incomplete-same-rect'
+    else:
+        print(f"ERROR ==> unknown pattern {pattern}")
+
+    return grid, object_mask, None, hint
 
 def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj_dim=3, obj_bg_param=None, colors_present=None):
     if min_dim is None:
@@ -1712,7 +1748,8 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
             # No more space for this object, stop placing further objects
             break
             
-    return grid, object_mask, None
+    hint = 'incomplete-same-rect'
+    return grid, object_mask, None, hint
 
 def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -1825,7 +1862,8 @@ def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None, col
             # No more space for this object, stop placing further objects
             break
 
-    return grid, object_mask, None
+    hint = 'pixel-color'
+    return grid, object_mask, None, hint
 
 
 def sample_inner_color_borders(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -1913,7 +1951,7 @@ def sample_inner_color_borders(training_path, min_dim=None, max_dim=None, colors
     # Initialize object mask (0 for background, positive integers for objects)
     object_mask = np.zeros((num_rows, num_cols), dtype=int)
 
-    return grid, object_mask, None
+    return grid, object_mask, None, ''
 
 def sample_four_corners(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -2013,7 +2051,8 @@ def sample_four_corners(training_path, min_dim=None, max_dim=None, colors_presen
             # No more space for this object, stop placing further objects
             break
             
-    return grid, object_mask, None
+    hint = 'four-corners'
+    return grid, object_mask, None, hint
    
 def sample_odd_one_out_width(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -2105,10 +2144,12 @@ def sample_odd_one_out_width(training_path, min_dim=None, max_dim=None, colors_p
                 count_a = placed_widths.count(unique_widths[0])
                 count_b = placed_widths.count(unique_widths[1])
                 if (count_a == 1 and count_b >= 2) or (count_b == 1 and count_a >= 2):
-                    return grid, object_mask, None
+                    hint = 'pixel-color'
+                    return grid, object_mask, None, hint
 
     # Fallback: return the last generated grid even if constraints are not perfectly met (should be rare)
-    return grid, object_mask, None
+    hint = 'pixel-color'
+    return grid, object_mask, None, hint
 
 def sample_odd_one_out_height(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -2186,10 +2227,12 @@ def sample_odd_one_out_height(training_path, min_dim=None, max_dim=None, colors_
 
         # Ensure we have at least 3 objects; if not, retry generation
         if object_mask.max() >= 3:
-            return grid, object_mask, None
+            hint = 'pixel-color'
+            return grid, object_mask, None, hint
 
     # Fallback: return the last generated grid even if fewer than 3 objects (should be rare)
-    return grid, object_mask, None
+    hint = 'pixel-color'
+    return grid, object_mask, None, hint
 
 def _object_pixel_count(shape_type, h, w):
     """Number of pixels in the object (filled area or border for empty rect)."""
@@ -2339,7 +2382,8 @@ def sample_odd_one_out_size(training_path, min_dim=None, max_dim=None, colors_pr
         placed_ids = set(np.unique(object_mask)) - {0}
         # Need at least 3 objects and the odd-one-out must be among them (so exactly 1 has odd_size, rest common_size)
         if len(placed_ids) >= 3 and (odd_out_idx + 1) in placed_ids:
-            return grid, object_mask, None
+            hint = 'pixel-color'
+            return grid, object_mask, None, hint
 
 
 def _is_connected(pixels):
@@ -2609,7 +2653,8 @@ def sample_odd_one_out_non_symmetry_h(training_path, min_dim=None, max_dim=None,
 
         placed_ids = set(np.unique(object_mask)) - {0}
         if len(placed_ids) >= 3 and (odd_out_idx + 1) in placed_ids:
-            return grid, object_mask, None
+            hint = 'pixel-color'
+            return grid, object_mask, None, hint
 
 
 def sample_odd_one_out_non_symmetry_v(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -2686,7 +2731,8 @@ def sample_odd_one_out_non_symmetry_v(training_path, min_dim=None, max_dim=None,
 
         placed_ids = set(np.unique(object_mask)) - {0}
         if len(placed_ids) >= 3 and (odd_out_idx + 1) in placed_ids:
-            return grid, object_mask, None
+            hint = 'pixel-color'
+            return grid, object_mask, None, hint
 
 
 def sample_odd_one_out_symmetry_h(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -2756,7 +2802,8 @@ def sample_odd_one_out_symmetry_h(training_path, min_dim=None, max_dim=None, col
 
         placed_ids = set(np.unique(object_mask)) - {0}
         if len(placed_ids) >= 3 and (odd_out_idx + 1) in placed_ids:
-            return grid, object_mask, None
+            hint = 'pixel-color'
+            return grid, object_mask, None, hint
 
 
 def sample_odd_one_out_symmetry_v(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -2826,7 +2873,8 @@ def sample_odd_one_out_symmetry_v(training_path, min_dim=None, max_dim=None, col
 
         placed_ids = set(np.unique(object_mask)) - {0}
         if len(placed_ids) >= 3 and (odd_out_idx + 1) in placed_ids:
-            return grid, object_mask, None
+            hint = 'pixel-color'
+            return grid, object_mask, None, hint
 
 
 def sample_odd_one_out_color(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -2942,7 +2990,8 @@ def sample_odd_one_out_color(training_path, min_dim=None, max_dim=None, colors_p
         if not found_spot:
             break
 
-    return grid, object_mask, None
+    hint = 'pixel-color'
+    return grid, object_mask, None, hint
 
 
 def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_same_shape=False, colors_present=None):
@@ -3034,7 +3083,11 @@ def sample_incomplete_rectangles(training_path, min_dim=None, max_dim=None, all_
             # No more space for this object, stop placing further objects
             break
             
-    return grid, object_mask, None
+    if all_same_shape:
+        hint = 'incomplete-same-rect'
+    else:
+        hint = 'incomplete-rect'
+    return grid, object_mask, None, hint
 
 
 def sample_twin_objects_v(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -3135,7 +3188,8 @@ def sample_twin_objects_v(training_path, min_dim=None, max_dim=None, colors_pres
         if not found_spot:
             break
 
-    return grid, object_mask, sub_objs_mask
+    hint = 'fill-color'
+    return grid, object_mask, sub_objs_mask, hint
 
 
 def sample_twin_objects_h(training_path, min_dim=None, max_dim=None, colors_present=None):
@@ -3229,7 +3283,8 @@ def sample_twin_objects_h(training_path, min_dim=None, max_dim=None, colors_pres
         if not found_spot:
             break
 
-    return grid, object_mask, sub_objs_mask
+    hint = 'fill-color'
+    return grid, object_mask, sub_objs_mask, hint
 
 def _sub_cells_and_forbidden(sub_type, h, w, pos):
     """Return (cells, forbidden) in local rect coords. forbidden = cells union their neighbors (for non-adjacency)."""
@@ -3405,7 +3460,8 @@ def sample_max_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
 
         counts = [int(m.max()) for m in sub_objs_mask] if sub_objs_mask else []
         if len(sub_objs_mask) >= 2 and counts and counts.count(max(counts)) == 1:
-            return grid, object_mask, sub_objs_mask
+            hint = 'fill-color'
+            return grid, object_mask, sub_objs_mask, hint
 
 def sample_min_inner_objs(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -3506,7 +3562,8 @@ def sample_min_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
 
         counts = [int(m.max()) for m in sub_objs_mask] if sub_objs_mask else []
         if len(sub_objs_mask) >= 2 and counts and counts.count(min(counts)) == 1:
-            return grid, object_mask, sub_objs_mask
+            hint = 'fill-color'
+            return grid, object_mask, sub_objs_mask, hint
 
 def sample_odd_one_out_subobj_count(training_path, min_dim=None, max_dim=None, colors_present=None):
     if min_dim is None:
@@ -3642,4 +3699,5 @@ def sample_odd_one_out_subobj_count(training_path, min_dim=None, max_dim=None, c
                 # Exactly one of the two counts must occur once.
                 for v in unique_vals:
                     if counts.count(v) == 1:
-                        return grid, object_mask, sub_objs_mask
+                        hint = 'pixel-color'
+                        return grid, object_mask, sub_objs_mask, hint

@@ -208,7 +208,7 @@ class GridSampler:
 
             # Initialize object mask (0 for background, positive integers for objects)
             object_mask = np.zeros((rows, cols), dtype=int)
-            return grid, object_mask, None
+            return grid, object_mask, None, ''
 
     def sample_shearable_grids(self, min_dim, max_dim, colors_present=None):
         valid = False
@@ -288,7 +288,7 @@ class GridSampler:
 
         # Initialize object mask (0 for background, positive integers for objects)
         object_mask = np.zeros((height, width), dtype=int)
-        return np.array(input_grid), object_mask, None
+        return np.array(input_grid), object_mask, None, ''
 
 
     def sample_croppable_corners_grids(self, min_dim, max_dim, colors_present=None):
@@ -341,7 +341,7 @@ class GridSampler:
             if corners_valid and colors_valid:
                 # Initialize object mask (0 for background, positive integers for objects)
                 object_mask = np.zeros((rows, cols), dtype=int)
-                return grid, object_mask, None
+                return grid, object_mask, None, ''
 
     def sample_min_count_grids(self, min_dim, max_dim, colors_present=None):
         valid = False
@@ -373,7 +373,7 @@ class GridSampler:
 
         # Initialize object mask (0 for background, positive integers for objects)
         object_mask = np.zeros(input_grid.shape, dtype=int)
-        return input_grid, object_mask, None
+        return input_grid, object_mask, None, ''
 
 
     def sample_max_count_grids(self, min_dim, max_dim, colors_present=None):
@@ -401,7 +401,7 @@ class GridSampler:
         
         # Initialize object mask (0 for background, positive integers for objects)
         object_mask = np.zeros(input_grid.shape, dtype=int)
-        return input_grid, object_mask, None
+        return input_grid, object_mask, None, ''
 
     def sample_count_and_draw_grids(self, bg_color, colors_present=None):
         # Generate a random square grid with dimension between 3x3 and 6x6 and fill with background color
@@ -452,7 +452,7 @@ class GridSampler:
 
         # Initialize object mask (0 for background, positive integers for objects)
         object_mask = np.zeros((dim, dim), dtype=int)
-        return input_grid, object_mask, None
+        return input_grid, object_mask, None, ''
 
     def arc_to_numpy(self, fpath):
         with open(fpath) as f:
@@ -857,7 +857,6 @@ class GridSampler:
         elif selected_cat == 'merge_4v_b':
             return self.sample_merge_task(self.training_path, min_dim=3, max_dim=25, bg_color=bg_color, colors_present=colors_present, 
                                           types=['vertical'], num_subgrids_override=4, use_boundary=True)
-
         elif selected_cat == 'basic':
             return self.sample(bg_color, min_dim, max_dim, colors_present=colors_present)
         else:
@@ -1182,7 +1181,11 @@ class GridSampler:
                 # Vertical boundary between left and right halves
                 grid[:, c1:c2] = boundary_color
 
-        return grid, object_mask, None
+        if has_boundary:
+            hint = 'split-grid-b'
+        else:
+            hint = 'split-grid'
+        return grid, object_mask, None, hint
 
     
     def sample(self, bg_color=None, min_dim=None, max_dim=None, force_square=False, monochrome_grid_ok=True, colors_present=None):
