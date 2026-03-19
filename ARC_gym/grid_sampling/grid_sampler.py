@@ -1192,15 +1192,29 @@ class GridSampler:
         rnd = np.random.uniform()
 
         if rnd < self.grid_type_ratio:
-            return self.uniform_random_sample(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok, colors_present)
+            grid = self.uniform_random_sample(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok, colors_present)
+            # Initialize object mask (0 for background, positive integers for objects)
+            object_mask = np.zeros(grid.shape, dtype=int)
+            return grid, object_mask, None, ''
+
         else:
             if colors_present is not None:
                 for _ in range(100):
                     grid = self.training_set_crop(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
                     grid_colors = set(np.unique(grid))
                     if all(color in grid_colors for color in colors_present):
-                        return grid
+                        # Initialize object mask (0 for background, positive integers for objects)
+                        object_mask = np.zeros(grid.shape, dtype=int)
+                        return grid, object_mask, None, ''
+
                 # If after 100 tries not all required colors were found, just return the last grid anyway
-                return grid
+                # Initialize object mask (0 for background, positive integers for objects)
+                object_mask = np.zeros(grid.shape, dtype=int)
+                return grid, object_mask, None, ''
+
             else:
-                return self.training_set_crop(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
+                grid = self.training_set_crop(bg_color, min_dim, max_dim, force_square, monochrome_grid_ok)
+                # Initialize object mask (0 for background, positive integers for objects)
+                object_mask = np.zeros(grid.shape, dtype=int)
+                return grid, object_mask, None, ''
+
