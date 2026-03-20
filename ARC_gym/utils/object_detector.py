@@ -1861,7 +1861,6 @@ class ObjectDetector:
 
         result = ObjectDetector.check_special_case(grid, task_id, grid_idx, fill_mask)
         if result is not None:
-            print("==> Was a special case!")
             return np.array(result)
         
         if category == 'distinct_colors_adjacent':

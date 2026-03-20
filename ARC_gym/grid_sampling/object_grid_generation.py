@@ -56,7 +56,6 @@ def return_training_objects(training_examples, training_path, obj_category, hint
     while True:
         selected_example = random.choice(training_examples)
 
-        print(f"Selected example: {selected_example}")
         # load the example from file.
         task_id = selected_example[0]
         json_path = '%s/%s.json' % (training_path, task_id)
@@ -645,7 +644,7 @@ def count_corners(object_mask, obj_id):
 
 def sample_max_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
     while True:
-        grid, object_mask, _ = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
+        grid, object_mask, _, _ = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
         
         # Get all unique object IDs (excluding background 0)
         unique_objects = np.unique(object_mask)
@@ -676,7 +675,7 @@ def sample_max_corner_objects(training_path, min_dim=None, max_dim=None, colors_
 
 def sample_min_corner_objects(training_path, min_dim=None, max_dim=None, colors_present=None):
     while True:
-        grid, object_mask, _ = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
+        grid, object_mask, _, _ = sample_corner_objects(training_path, min_dim, max_dim, colors_present)
         
         # Get all unique object IDs (excluding background 0)
         unique_objects = np.unique(object_mask)
@@ -1672,9 +1671,11 @@ def sample_fixed_size_2col_shapes(training_path, min_dim=None, max_dim=None, obj
     if a < 0.25 and obj_bg_param is None:
         return sample_fixed_size_2col_shapes_training(training_path, obj_dim)
 
-    # Generate grid dimensions
-    num_rows = np.random.randint(min_dim, max_dim + 1)
-    num_cols = np.random.randint(min_dim, max_dim + 1)
+    # Generate grid dimensions large enough to fit one obj_dim x obj_dim object.
+    dim_min = max(min_dim, obj_dim)
+    dim_max = max(max_dim, dim_min)
+    num_rows = np.random.randint(dim_min, dim_max + 1)
+    num_cols = np.random.randint(dim_min, dim_max + 1)
 
     # Generate background color (50% chance for 0, 50% for 1-9)
     if np.random.random() < 0.5:
@@ -3355,6 +3356,8 @@ def sample_max_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
     if max_dim is None:
         max_dim = 30
 
+    max_num_attempts = 50
+
     while True:
         num_rows = np.random.randint(min_dim, max_dim + 1)
         num_cols = np.random.randint(min_dim, max_dim + 1)
@@ -3426,7 +3429,8 @@ def sample_max_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
         if sub_objs_mask:
             counts = [int(m.max()) for m in sub_objs_mask]
             max_count = max(counts)
-            while counts.count(max_count) > 1:
+            attempts = 0
+            while counts.count(max_count) > 1 and attempts < max_num_attempts:
                 idx_with_max = next(i for i, c in enumerate(counts) if c == max_count)
                 r0, c0, h, w = rect_bounds[idx_with_max]
                 obj_id = idx_with_max + 1
@@ -3441,7 +3445,7 @@ def sample_max_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
                                 if 0 <= nr < h and 0 <= nc < w:
                                     used_or_adjacent.add((nr, nc))
                 new_sub_idx = max_count + 1
-                _place_sub_in_rect(
+                placed = _place_sub_in_rect(
                     grid,
                     object_mask,
                     sub_objs_mask,
@@ -3457,8 +3461,13 @@ def sample_max_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
                     used_or_adjacent,
                     mask_idx=idx_with_max,
                 )
+                attempts += 1
+                if not placed:
+                    continue
                 counts = [int(m.max()) for m in sub_objs_mask]
                 max_count = max(counts)
+            if counts.count(max_count) > 1:
+                continue
 
         counts = [int(m.max()) for m in sub_objs_mask] if sub_objs_mask else []
         if len(sub_objs_mask) >= 2 and counts and counts.count(max(counts)) == 1:
@@ -3471,6 +3480,8 @@ def sample_min_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
 
     if max_dim is None:
         max_dim = 30
+
+    max_num_attempts = 50
 
     while True:
         num_rows = np.random.randint(min_dim, max_dim + 1)
@@ -3543,7 +3554,8 @@ def sample_min_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
         if sub_objs_mask:
             counts = [int(m.max()) for m in sub_objs_mask]
             min_count = min(counts)
-            while counts.count(min_count) > 1:
+            attempts = 0
+            while counts.count(min_count) > 1 and attempts < max_num_attempts:
                 idx_with_min = next(i for i, c in enumerate(counts) if c == min_count)
                 r0, c0, h, w = rect_bounds[idx_with_min]
                 obj_id = idx_with_min + 1
@@ -3558,9 +3570,14 @@ def sample_min_inner_objs(training_path, min_dim=None, max_dim=None, colors_pres
                                 if 0 <= nr < h and 0 <= nc < w:
                                     used_or_adjacent.add((nr, nc))
                 new_sub_idx = min_count + 1
-                _place_sub_in_rect(grid, object_mask, sub_objs_mask, r0, c0, h, w, obj_id, rect_color, sub_color, grid_sub_type, new_sub_idx, used_or_adjacent, mask_idx=idx_with_min)
+                placed = _place_sub_in_rect(grid, object_mask, sub_objs_mask, r0, c0, h, w, obj_id, rect_color, sub_color, grid_sub_type, new_sub_idx, used_or_adjacent, mask_idx=idx_with_min)
+                attempts += 1
+                if not placed:
+                    continue
                 counts = [int(m.max()) for m in sub_objs_mask]
                 min_count = min(counts)
+            if counts.count(min_count) > 1:
+                continue
 
         counts = [int(m.max()) for m in sub_objs_mask] if sub_objs_mask else []
         if len(sub_objs_mask) >= 2 and counts and counts.count(min(counts)) == 1:
