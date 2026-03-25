@@ -55,7 +55,6 @@ def return_training_objects(training_examples, training_path, obj_category, hint
     
     while True:
         selected_example = random.choice(training_examples)
-
         # load the example from file.
         task_id = selected_example[0]
         json_path = '%s/%s.json' % (training_path, task_id)
@@ -359,7 +358,7 @@ def sample_non_symmetrical_shapes_training(training_path):
         ('d37a1ef5', 2)
     ]
 
-    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent_empty', 'pixel-color')
+    return return_training_objects(training_examples, training_path, 'distinct_colors_adjacent', 'pixel-color')
 
 def sample_incomplete_rectangles_training(training_path):
     training_examples = [
@@ -1763,7 +1762,7 @@ def sample_non_symmetrical_shapes(training_path, min_dim=None, max_dim=None, col
 
     a = np.random.uniform()
 
-    if a < 0.4:
+    if a < 0.3:
         return sample_non_symmetrical_shapes_training(training_path)
 
     # Helper function to check if a shape is asymmetric under 90/180/270 rotation
